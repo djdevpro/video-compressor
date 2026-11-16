@@ -262,6 +262,8 @@ fn captures_du_site() {
         crate::i18n::set(lang);
         let mut h = harness_scaled(NORMAL, 2.0);
         fill(h.state_mut());
+        // Le site est dans les teintes ambre : ses captures aussi.
+        h.state_mut().settings.accent = crate::theme::Accent::Amber;
         if lang == Lang::En {
             let names = ["Kickoff meeting.mov", "Product demo, take 3.mp4", "screen-capture-2026-11-16.mkv", "animated-sticker.webp", "old-camcorder.avi"];
             for (item, name) in h.state_mut().items.iter_mut().zip(names) {

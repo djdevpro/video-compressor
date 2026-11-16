@@ -62,6 +62,10 @@ fn link_unix(lib: &Path) {
     paths.extend(std::env::var_os("PKG_CONFIG_PATH").iter().flat_map(std::env::split_paths));
     // SAFETY : un script de compilation n'a qu'un fil d'exécution.
     unsafe { std::env::set_var("PKG_CONFIG_PATH", std::env::join_paths(paths).expect("PKG_CONFIG_PATH")) };
+    // Les fichiers `.pc` lus sont ceux du dossier désigné par FFMPEG_DIR, compilé pour la cible :
+    // `pkg-config` peut donc servir en compilation croisée (le binaire Intel, sur un Mac à puce Apple).
+    // SAFETY : même raison.
+    unsafe { std::env::set_var("PKG_CONFIG_ALLOW_CROSS", "1") };
     for name in ["libavfilter", "libavformat", "libavcodec", "libswscale", "libswresample", "libavutil"] {
         pkg_config::Config::new().statik(true).probe(name).unwrap_or_else(|e| panic!("pkg-config ne trouve pas {name} : {e}"));
     }

@@ -263,10 +263,13 @@ fn captures_du_site() {
     std::fs::create_dir_all("target/captures").unwrap();
     for (lang, code) in [(Lang::En, "en"), (Lang::Fr, "fr")] {
         crate::i18n::set(lang);
-        let mut h = harness_scaled(NORMAL, 2.0);
+        // Une fenêtre en 16/9, et trois vidéos : l'aperçu garde toute sa hauteur.
+        let mut h = harness_scaled((1280.0, 720.0), 2.0);
         fill(h.state_mut());
+        h.state_mut().items.retain(|i| [100, 101, 103].contains(&i.id));
+        h.state_mut().items[1].state = State::Ready;
         if lang == Lang::En {
-            let names = ["Kickoff meeting.mov", "Product demo, take 3.mp4", "screen-capture-2026-11-16.mkv", "animated-sticker.webp", "old-camcorder.avi"];
+            let names = ["Kickoff meeting.mov", "Product demo, take 3.mp4", "animated-sticker.webp"];
             for (item, name) in h.state_mut().items.iter_mut().zip(names) {
                 item.path = Path::new("Videos").join(name);
                 item.name = name.to_owned();
@@ -282,7 +285,9 @@ fn captures_du_site() {
         h.run_steps(3);
         h.render().unwrap().save(format!("target/captures/site-{code}-reglages-fins.png")).unwrap();
         h.state_mut().fine_open = false;
-        h.state_mut().batch = Some(Batch { cancel: Arc::new(AtomicBool::new(false)), total: 4, finished: 1, ok: 1, failed: 0, saved: 0 });
+        h.state_mut().batch = Some(Batch { cancel: Arc::new(AtomicBool::new(false)), total: 2, finished: 0, ok: 0, failed: 0, saved: 0 });
+        h.state_mut().items[1].state = State::Running { fraction: 0.42, speed: 3.1, started: Instant::now() - Duration::from_secs(21) };
+        h.state_mut().items[2].state = State::Queued;
         h.state_mut().selected = Some(101);
         h.run_steps(3);
         h.render().unwrap().save(format!("target/captures/site-{code}-en-cours.png")).unwrap();

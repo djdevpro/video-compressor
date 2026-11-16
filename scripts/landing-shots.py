@@ -50,11 +50,11 @@ def stage(capture, size, width, top):
     return out
 
 
-# L'image de partage du site : la fenêtre dépasse par le bas.
-stage("site-en-choix.png", (2400, 1260), 1840, 150).save(os.path.join(LANDING, "og.jpg"), quality=88, optimize=True, progressive=True)
-# L'en-tête du README : la fenêtre entière.
+# L'image de partage du site.
+stage("site-en-choix.png", (2400, 1260), 1840, 112).save(os.path.join(LANDING, "og.jpg"), quality=88, optimize=True, progressive=True)
+# L'en-tête du README, en 16/9 comme la fenêtre.
 os.makedirs(os.path.join(ROOT, ".github", "assets"), exist_ok=True)
-stage("site-fr-choix.png", (2400, 1560), 1840, 150).save(os.path.join(ROOT, ".github", "assets", "hero.jpg"), quality=88, optimize=True, progressive=True)
+stage("site-fr-choix.png", (2400, 1350), 1840, 157).save(os.path.join(ROOT, ".github", "assets", "hero.jpg"), quality=88, optimize=True, progressive=True)
 
 shutil.copyfile(os.path.join(ROOT, "assets", "icon.svg"), os.path.join(LANDING, "icon.svg"))
 Image.open(os.path.join(ROOT, "assets", "icon.png")).resize((128, 128), Image.LANCZOS).save(os.path.join(LANDING, "icon", "128.png"), optimize=True)

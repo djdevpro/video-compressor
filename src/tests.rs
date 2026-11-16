@@ -65,7 +65,8 @@ fn fill(app: &mut App) {
         ("vieux-camescope.avi", info(720, 576, 25.0, 3605.0, 1_250_000_000, "mpeg4"), State::Failed("Invalid data found when processing input".into())),
     ];
     for (i, (name, info, state)) in rows.into_iter().enumerate() {
-        let mut item = Item::new(100 + i as u64, PathBuf::from(format!(r"C:\Vidéos\{name}")));
+        // `join` plutôt qu'une barre oblique inverse : hors de Windows, elle ferait partie du nom.
+        let mut item = Item::new(100 + i as u64, Path::new("Vidéos").join(name));
         item.info = Some(info);
         item.state = state;
         app.items.push(item);
@@ -264,12 +265,10 @@ fn captures_du_site() {
         crate::i18n::set(lang);
         let mut h = harness_scaled(NORMAL, 2.0);
         fill(h.state_mut());
-        // Le site est dans les teintes ambre : ses captures aussi.
-        h.state_mut().settings.accent = crate::theme::Accent::Amber;
         if lang == Lang::En {
             let names = ["Kickoff meeting.mov", "Product demo, take 3.mp4", "screen-capture-2026-11-16.mkv", "animated-sticker.webp", "old-camcorder.avi"];
             for (item, name) in h.state_mut().items.iter_mut().zip(names) {
-                item.path = PathBuf::from(format!(r"C:\Videos\{name}"));
+                item.path = Path::new("Videos").join(name);
                 item.name = name.to_owned();
             }
             h.state_mut().settings.suffix = "-compressed".into();

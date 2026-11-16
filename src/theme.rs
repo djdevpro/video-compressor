@@ -11,11 +11,11 @@ use serde::{Deserialize, Serialize};
 
 use crate::i18n::tr;
 
-/// La couleur d'accent : le vert citron par défaut, quatre autres au choix.
+/// La couleur d'accent : l'ambre par défaut, cinq autres au choix.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Accent {
-    #[default]
     Lime,
+    #[default]
     Amber,
     Coral,
     Green,
@@ -33,7 +33,7 @@ struct AccentSet {
 }
 
 impl Accent {
-    pub const ALL: [Self; 6] = [Self::Lime, Self::Blue, Self::Coral, Self::Amber, Self::Green, Self::Violet];
+    pub const ALL: [Self; 6] = [Self::Amber, Self::Lime, Self::Coral, Self::Green, Self::Blue, Self::Violet];
 
     pub fn label(self) -> &'static str {
         match self {
@@ -134,11 +134,11 @@ const DARK: Tokens = Tokens {
     ink_strong: hex(0xf5f5f5),
     muted: hex(0xa8a8a8),
     faint: hex(0x8a8a8a),
-    accent: hex(0xc4f042),
-    accent_hover: hex(0xd4f76c),
-    accent_ink: hex(0xc4f042),
-    accent_soft: hex(0x232a12),
-    on_accent: hex(0x10130a),
+    accent: hex(0xf4a945),
+    accent_hover: hex(0xffbb62),
+    accent_ink: hex(0xf6b65c),
+    accent_soft: hex(0x4a3215),
+    on_accent: hex(0x1d1407),
     good_bg: hex(0x2c4526),
     good_fg: hex(0xb4d89a),
     neutral_bg: hex(0x333333),

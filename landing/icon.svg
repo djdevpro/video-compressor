@@ -1,26 +1,14 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <!-- Une image de film serrée entre deux mâchoires : la vidéo, compressée. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <!-- Trois triangles de lecture qui rétrécissent : la même vidéo, de plus en plus légère. -->
   <defs>
-    <linearGradient id="plate" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#2a2a2a"/>
-      <stop offset="1" stop-color="#151515"/>
-    </linearGradient>
-    <linearGradient id="edge" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#5a5a5a"/>
-      <stop offset="0.5" stop-color="#2f2f2f"/>
-      <stop offset="1" stop-color="#4a4a4a"/>
-    </linearGradient>
-    <linearGradient id="accent" x1="0" y1="0" x2="0" y2="1">
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0" stop-color="#ffbb62"/>
-      <stop offset="1" stop-color="#ee9f38"/>
+      <stop offset="1" stop-color="#e8912c"/>
     </linearGradient>
   </defs>
-  <rect x="16" y="16" width="480" height="480" rx="112" fill="url(#plate)" stroke="url(#edge)" stroke-width="8"/>
-  <!-- Les deux mâchoires -->
-  <path d="M176 96h160l-80 62z" fill="#8a8a8a"/>
-  <path d="M176 416h160l-80-62z" fill="#8a8a8a"/>
-  <!-- L'image de film -->
-  <rect x="96" y="176" width="320" height="160" rx="34" fill="#1b1b1b" stroke="#d8d8d8" stroke-width="14"/>
-  <!-- Lecture -->
-  <path d="M228 214c0-9 10-14 17-9l66 43c7 4 7 14 0 18l-66 43c-7 5-17 0-17-9z" fill="url(#accent)"/>
+  <rect x="4" y="4" width="120" height="120" rx="28" fill="#171717"/>
+  <rect x="4" y="4" width="120" height="120" rx="28" fill="none" stroke="#363636" stroke-width="3"/>
+  <polygon points="20,40 20,88 56,64" fill="url(#g)" stroke="url(#g)" stroke-width="6" stroke-linejoin="round" opacity="0.3"/>
+  <polygon points="64,48.5 64,79.5 87,64" fill="url(#g)" stroke="url(#g)" stroke-width="6" stroke-linejoin="round" opacity="0.62"/>
+  <polygon points="96,55 96,73 109,64" fill="url(#g)" stroke="url(#g)" stroke-width="6" stroke-linejoin="round"/>
 </svg>

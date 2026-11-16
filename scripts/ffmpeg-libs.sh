@@ -54,8 +54,26 @@ for candidate in "${VCPKG_ROOT:-}/vcpkg" "${VCPKG_INSTALLATION_ROOT:-}/vcpkg" "$
     if [ -z "$vcpkg" ] && [ -n "$candidate" ] && [ -f "$exe" ]; then vcpkg="$exe"; fi
   done
 done
+
+# vcpkg.json fixe la version des ports par un commit du dépôt de vcpkg. Un vcpkg installé comme
+# un clone git (celui des machines de GitHub) doit avoir ce commit : on va le chercher s'il manque,
+# et si ce clone ne se laisse pas compléter, on se passe de lui.
+baseline="$(sed -n 's/.*"builtin-baseline": *"\([0-9a-f]\{40\}\)".*/\1/p' "$root/vcpkg.json")"
+has_baseline() { git -C "$1" cat-file -e "$baseline^{commit}" 2>/dev/null; }
+if [ -n "$vcpkg" ] && [ -n "$baseline" ] && [ -e "$(dirname "$vcpkg")/.git" ] && ! has_baseline "$(dirname "$vcpkg")"; then
+  echo "vcpkg : récupération du commit $baseline"
+  git -C "$(dirname "$vcpkg")" fetch --depth 1 origin "$baseline" || true
+  has_baseline "$(dirname "$vcpkg")" || vcpkg=""
+fi
+
 if [ -z "$vcpkg" ]; then
-  [ -d "$build/vcpkg" ] || git clone --depth 1 https://github.com/microsoft/vcpkg "$build/vcpkg"
+  if [ ! -d "$build/vcpkg/.git" ]; then
+    git init -q "$build/vcpkg"
+    git -C "$build/vcpkg" remote add origin https://github.com/microsoft/vcpkg
+  fi
+  # Exactement le commit de vcpkg.json (à défaut, la branche principale).
+  git -C "$build/vcpkg" fetch --depth 1 origin "${baseline:-master}"
+  git -C "$build/vcpkg" checkout -q FETCH_HEAD
   if $windows; then "$build/vcpkg/bootstrap-vcpkg.bat" -disableMetrics; else "$build/vcpkg/bootstrap-vcpkg.sh" -disableMetrics; fi
   vcpkg="$build/vcpkg/vcpkg"
 fi

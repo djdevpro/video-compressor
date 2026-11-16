@@ -20,6 +20,7 @@ L'application est écrite en Rust avec egui. FFmpeg est compilé dans l'exécuta
 - Elle règle la résolution de 240p à 4K et la cadence de 10 à 60 images par seconde, sans jamais agrandir ni inventer d'images.
 - Elle compresse selon une qualité choisie sur un curseur, ou selon une taille à ne pas dépasser. Dans ce second cas, elle recommence avec un débit corrigé si le premier essai dépasse la limite.
 - Elle redresse les vidéos de téléphone tenues debout.
+- Elle lit la vidéo choisie dans son aperçu, avec pause et déplacement, sans le son.
 - Elle traite plusieurs fichiers à la suite. Sélectionner dix vidéos puis faire un clic droit les réunit dans la même fenêtre.
 - Elle propose cinq choix tout faits, Web 1080p, Léger 720p, Sous 10 Mo, GIF animé et le son seul.
 
@@ -90,6 +91,7 @@ Le workflow [Release](.github/workflows/release.yml) se lance à la main depuis 
 | `src/engine.rs` | Le moteur vidéo, sur FFmpeg lié dans l'exécutable par la crate `ffmpeg-next` |
 | `src/webp.rs` | Le décodage des WebP animés |
 | `src/queue.rs` | La file des fichiers et ses fils de travail |
+| `src/player.rs` | Le lecteur de l'aperçu |
 | `src/shell.rs` | L'entrée du clic droit sur chaque système |
 | `src/instance.rs` | Une seule fenêtre, même lancée dix fois |
 | `src/release.rs`, `src/net.rs` | La mise à jour de l'application |

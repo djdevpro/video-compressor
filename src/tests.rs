@@ -17,6 +17,7 @@ use egui_kittest::kittest::Queryable as _;
 use crate::app::{App, Batch, Dialog};
 use crate::engine::{self, EncodeError, MediaInfo};
 use crate::i18n::Lang;
+use crate::player::Player;
 use crate::queue::{self, Item, Job, Msg, State};
 use crate::settings::{Audio, Container, Encode, Fps, Mode, Resolution, Settings, Speed, VideoCodec};
 
@@ -162,7 +163,7 @@ fn la_selection_montre_chaque_etat() {
     fill(h.state_mut());
     h.run_steps(3);
     assert_eq!(h.state().selected, Some(100), "la première vidéo est choisie d'office");
-    for label in ["Réunion de lancement.mov", "→  412,0 Mo  ·  85 % de moins", "Lire", "Montrer", "Compresser 2 fichiers", "Clic droit actif"] {
+    for label in ["Réunion de lancement.mov", "→  412,0 Mo  ·  85 % de moins", "Lire la vidéo", "Lire", "Montrer", "Compresser 2 fichiers", "Clic droit actif"] {
         h.get_by_label(label);
     }
     click(&mut h, "vieux-camescope.avi");
@@ -215,6 +216,21 @@ fn captures() {
         h.state_mut().items[1].thumb = Some(texture);
         h.run_steps(3);
         h.render().unwrap().save(format!("target/captures/{name}-choix.png")).unwrap();
+        // Le lecteur de l'aperçu sur un vrai fichier : en lecture, puis en pause.
+        let dir = workspace(&format!("captures-{name}"));
+        let clip = sample(&dir, 3, 640, 360);
+        let player = Player::open(100, clip.clone(), &engine::probe(&clip).unwrap(), h.ctx.clone());
+        wait_for(5, "quelques images du lecteur", || player.shown().1 >= 20);
+        h.state_mut().player = Some(player);
+        h.run_steps(3);
+        h.render().unwrap().save(format!("target/captures/{name}-lecture.png")).unwrap();
+        h.state().player.as_ref().unwrap().toggle();
+        std::thread::sleep(Duration::from_millis(150));
+        h.run_steps(3);
+        h.get_by_label("Position dans la vidéo");
+        h.render().unwrap().save(format!("target/captures/{name}-pause.png")).unwrap();
+        h.state_mut().player = None;
+        let _ = std::fs::remove_dir_all(&dir);
         h.state_mut().batch = Some(Batch { cancel: Arc::new(AtomicBool::new(false)), total: 4, finished: 1, ok: 1, failed: 0, saved: 0 });
         h.state_mut().selected = Some(101);
         h.run_steps(3);
@@ -374,6 +390,99 @@ fn e2e_webp_anime_vers_mp4() {
     assert_eq!((webm.vcodec.as_str(), webm.height), ("vp9", 120), "jamais agrandi");
     let gif = convert(&webp, &Encode { container: Container::Gif, ..Default::default() }, "en-gif");
     assert_eq!((gif.vcodec.as_str(), gif.width), ("gif", 160));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// Attend qu'une condition soit vraie, au plus `seconds` secondes.
+fn wait_for(seconds: u64, what: &str, mut done: impl FnMut() -> bool) {
+    let limit = Instant::now() + Duration::from_secs(seconds);
+    while !done() {
+        assert!(Instant::now() < limit, "toujours pas : {what}");
+        std::thread::sleep(Duration::from_millis(20));
+    }
+}
+
+/// Le lecteur de l'aperçu : il lit à la cadence de la vidéo, se met en pause, saute à un instant,
+/// s'arrête au bout, redresse une vidéo de téléphone et rejoue un WebP animé.
+#[test]
+fn e2e_lecteur_de_l_apercu() {
+    let dir = workspace("lecteur");
+    let input = sample(&dir, 3, 640, 360);
+    let info = engine::probe(&input).unwrap();
+    let ctx = egui::Context::default();
+
+    let started = Instant::now();
+    let player = Player::open(1, input.clone(), &info, ctx.clone());
+    assert!(player.playing() && player.can_seek);
+    wait_for(5, "trente images lues", || player.shown().1 >= 30);
+    assert_eq!(player.shown().0, Some((640, 360)));
+    // Trente images à 30 par seconde : une seconde de vidéo, en une seconde environ.
+    let (elapsed, position) = (started.elapsed().as_secs_f64(), player.position());
+    assert!((0.8..1.3).contains(&position), "position {position}");
+    assert!(elapsed > 0.8, "la lecture suit l'horloge, pas la vitesse du décodeur ({elapsed} s)");
+
+    player.toggle();
+    std::thread::sleep(Duration::from_millis(150));
+    let paused = player.shown().1;
+    std::thread::sleep(Duration::from_millis(300));
+    assert!(!player.playing() && player.shown().1 == paused, "en pause, plus aucune image n'arrive");
+
+    player.seek(2.0);
+    wait_for(5, "l'image du saut", || (player.position() - 2.0).abs() < 0.05);
+    assert!(!player.playing(), "un saut en pause reste en pause");
+    assert_eq!(player.shown().1, paused + 1, "une seule image montrée, celle de l'instant demandé");
+
+    player.toggle();
+    wait_for(5, "la fin de la vidéo", || player.ended());
+    assert!(!player.playing() && (player.position() - info.duration).abs() < 0.1, "position {}", player.position());
+    // Au bout, relancer repart du début.
+    player.toggle();
+    wait_for(5, "la reprise au début", || player.playing() && player.position() < 1.0 && !player.ended());
+    assert!(player.error().is_none());
+    drop(player);
+
+    // Dans la fenêtre : un clic sur l'image lit, un autre met en pause, choisir une autre vidéo ferme.
+    let mut h = harness();
+    for id in [7, 8] {
+        let mut item = Item::new(id, input.clone());
+        (item.info, item.state) = (Some(info.clone()), State::Ready);
+        h.state_mut().items.push(item);
+    }
+    h.state_mut().dry_run = false;
+    h.run_steps(2);
+    h.get_by_label("Lire la vidéo").click_accesskit();
+    h.run_steps(3);
+    assert!(h.state().player.as_ref().is_some_and(|p| p.item == 7 && p.playing()));
+    wait_for(5, "une image dans la fenêtre", || h.state().player.as_ref().unwrap().shown().1 >= 3);
+    h.run_steps(2);
+    h.get_by_label("Mettre en pause").click_accesskit();
+    h.run_steps(3);
+    assert!(h.state().player.as_ref().is_some_and(|p| !p.playing()));
+    h.state_mut().selected = Some(8);
+    h.run_steps(2);
+    assert!(h.state().player.is_none(), "le lecteur suit la vidéo choisie");
+    drop(h);
+
+    // Une vidéo de téléphone : l'image arrive debout.
+    let phone = dir.join("telephone.mp4");
+    engine::testing::sample_turned(&phone, 2, 320, 240, Some(90.0));
+    let turned = Player::open(2, phone.clone(), &engine::probe(&phone).unwrap(), ctx.clone());
+    wait_for(5, "une image de la vidéo de téléphone", || turned.shown().1 >= 1);
+    assert_eq!(turned.shown().0, Some((240, 320)));
+    drop(turned);
+
+    // Un WebP animé : rejoué par son propre décodeur, d'un bout à l'autre, sans saut.
+    convert(&input, &Encode { container: Container::Webp, resolution: Resolution::P240, fps: Fps::F10, ..Default::default() }, "animation");
+    let webp = dir.join("animation.webp");
+    let info = engine::probe(&webp).unwrap();
+    assert!(info.webp.is_some());
+    let animation = Player::open(3, webp, &info, ctx);
+    assert!(!animation.can_seek);
+    wait_for(10, "la fin de l'animation", || animation.ended());
+    let (size, frames) = animation.shown();
+    assert_eq!(size.map(|s| s.1), Some(240));
+    assert!((25..=35).contains(&frames), "{frames} images pour 3 s à 10 images par seconde");
+    assert!(animation.error().is_none());
     let _ = std::fs::remove_dir_all(&dir);
 }
 

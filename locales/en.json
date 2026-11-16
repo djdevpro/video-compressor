@@ -177,5 +177,10 @@
   "Garder seulement le son": "Keep only the sound",
   "Citron": "Lime",
   "Un clic droit sur une vidéo l'ouvrira ici.": "Right-clicking a video will open it here.",
-  "Une seule vidéo": "A single video"
+  "Une seule vidéo": "A single video",
+  "Mettre en pause": "Pause",
+  "Lire la vidéo": "Play the video",
+  "L'aperçu se lit sans le son": "The preview plays without sound",
+  "Position dans la vidéo": "Position in the video",
+  "Cette vidéo ne peut pas être lue ici ({0})": "This video cannot be played here ({0})"
 }

@@ -27,6 +27,7 @@ mod i18n;
 mod icons;
 mod instance;
 mod net;
+mod player;
 mod queue;
 mod release;
 mod settings;

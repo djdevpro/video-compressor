@@ -72,7 +72,7 @@ fn rate(r: Rational) -> f64 {
 }
 
 /// La piste vidéo à traiter : la première qui n'est pas une pochette d'album.
-fn video_index(ictx: &format::context::Input) -> Option<usize> {
+pub(crate) fn video_index(ictx: &format::context::Input) -> Option<usize> {
     ictx.streams().find(|s| s.parameters().medium() == media::Type::Video && !s.disposition().contains(format::stream::Disposition::ATTACHED_PIC)).map(|s| s.index())
 }
 
@@ -134,7 +134,7 @@ pub fn probe(path: &Path) -> Result<MediaInfo, String> {
 // ---- vignette ----------------------------------------------------------------------------------
 
 /// La plus grande taille qui tient dans `max` en gardant les proportions.
-fn fit(w: u32, h: u32, max: (u32, u32)) -> (u32, u32) {
+pub(crate) fn fit(w: u32, h: u32, max: (u32, u32)) -> (u32, u32) {
     let k = (f64::from(max.0) / f64::from(w.max(1))).min(f64::from(max.1) / f64::from(h.max(1))).min(1.0);
     (((f64::from(w) * k).round() as u32).max(1), ((f64::from(h) * k).round() as u32).max(1))
 }
@@ -167,7 +167,7 @@ fn downscale(w: u32, h: u32, rgba: &[u8], max: (u32, u32)) -> (u32, u32, Vec<u8>
 }
 
 /// Tourne une image RGBA d'un quart de tour dans le sens horaire.
-fn quarter_turn(w: u32, h: u32, rgba: &[u8]) -> (u32, u32, Vec<u8>) {
+pub(crate) fn quarter_turn(w: u32, h: u32, rgba: &[u8]) -> (u32, u32, Vec<u8>) {
     let mut out = vec![0u8; rgba.len()];
     for y in 0..h {
         for x in 0..w {
@@ -180,7 +180,7 @@ fn quarter_turn(w: u32, h: u32, rgba: &[u8]) -> (u32, u32, Vec<u8>) {
 }
 
 /// Les octets d'une image décodée, ligne par ligne (FFmpeg garde une marge au bout de chacune).
-fn packed_rows(frame: &frame::Video, bytes_per_pixel: usize) -> Vec<u8> {
+pub(crate) fn packed_rows(frame: &frame::Video, bytes_per_pixel: usize) -> Vec<u8> {
     let (w, h, stride) = (frame.width() as usize * bytes_per_pixel, frame.height() as usize, frame.stride(0));
     let data = frame.data(0);
     let mut out = Vec::with_capacity(w * h);
@@ -463,7 +463,7 @@ fn find_encoder(name: &str) -> Result<av::Codec, EncodeError> {
 }
 
 /// Ouvre le décodeur d'une piste, sur tous les coeurs.
-fn open_decoder(stream: &format::stream::Stream) -> Result<decoder::Opened, av::Error> {
+pub(crate) fn open_decoder(stream: &format::stream::Stream) -> Result<decoder::Opened, av::Error> {
     let context = codec::context::Context::from_parameters(stream.parameters())?;
     let codec = decoder::find(context.id()).ok_or(av::Error::DecoderNotFound)?;
     let mut decoder = context.decoder();

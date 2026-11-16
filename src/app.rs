@@ -17,6 +17,7 @@ use crate::engine::{self, EncodeError, VIDEO_EXTS};
 use crate::i18n::{self, Lang, tf, tr};
 use crate::icons::{self, Icon};
 use crate::instance::Waker;
+use crate::player::Player;
 use crate::queue::{self, Item, Job, Msg, State};
 use crate::release::{self, Phase as UpdatePhase, Updater, VERSION};
 use crate::settings::{Audio, Container, Encode, Fps, Kind as OutputKind, Mode, Resolution, Settings, Speed, VideoCodec, presets};
@@ -36,6 +37,10 @@ pub enum Action {
     Remove(u64),
     Select(u64),
     ToggleFine,
+    /// Lire la vidéo choisie dans l'aperçu, ou la mettre en pause.
+    TogglePlay(u64),
+    /// Sauter à cet instant de la vidéo lue, en secondes.
+    SeekTo(f64),
     Retry(u64),
     Start,
     Cancel,
@@ -87,6 +92,8 @@ pub struct App {
     pub selected: Option<u64>,
     /// Les réglages fins sont-ils dépliés ?
     pub fine_open: bool,
+    /// Le lecteur de l'aperçu, quand la vidéo choisie est en lecture.
+    pub(crate) player: Option<Player>,
     pub(crate) toast: Option<Toast>,
     pub(crate) actions: Vec<Action>,
     now: f64,
@@ -136,6 +143,7 @@ impl App {
             dialog: None,
             selected: None,
             fine_open: false,
+            player: None,
             toast: None,
             actions: Vec::new(),
             now: 0.0,
@@ -307,6 +315,23 @@ impl App {
                 }
                 Action::Select(id) => self.selected = Some(id),
                 Action::ToggleFine => self.fine_open = !self.fine_open,
+                Action::TogglePlay(id) => {
+                    if self.dry_run {
+                        continue;
+                    }
+                    match &self.player {
+                        Some(player) if player.item == id => player.toggle(),
+                        _ => {
+                            let item = self.items.iter().find(|i| i.id == id);
+                            self.player = item.and_then(|item| Some(Player::open(id, item.path.clone(), item.info.as_ref()?, ctx.clone())));
+                        }
+                    }
+                }
+                Action::SeekTo(seconds) => {
+                    if let Some(player) = &self.player {
+                        player.seek(seconds);
+                    }
+                }
                 Action::Retry(id) => {
                     if let Some(item) = self.items.iter_mut().find(|i| i.id == id)
                         && item.info.is_some()
@@ -504,7 +529,10 @@ impl App {
         let p = ui.painter().clone();
         match selected.map(|i| &self.items[i]) {
             Some(item) => {
-                match &item.thumb {
+                let mut player = self.player.as_mut().filter(|p| p.item == item.id);
+                let live = player.as_mut().and_then(|p| p.texture(ui.ctx()));
+                let playback = player.map(|p| (p.playing(), p.position(), p.duration, p.can_seek));
+                match live.as_ref().or(item.thumb.as_ref()) {
                     Some(texture) => {
                         let size = texture.size_vec2();
                         let k = (picture.width() / size.x).min(picture.height() / size.y);
@@ -526,7 +554,46 @@ impl App {
                         badge(Align2::LEFT_BOTTOM, picture.left_bottom() + vec2(12.0, -12.0), format!("{} × {}", info.width, info.height));
                     }
                     if info.duration > 0.0 {
-                        badge(Align2::RIGHT_BOTTOM, picture.right_bottom() + vec2(-12.0, -12.0), i18n::clock(info.duration));
+                        let time = match playback {
+                            Some((_, position, ..)) => format!("{} / {}", i18n::clock(position), i18n::clock(info.duration)),
+                            None => i18n::clock(info.duration),
+                        };
+                        badge(Align2::RIGHT_BOTTOM, picture.right_bottom() + vec2(-12.0, -12.0), time);
+                    }
+                }
+                // Le lecteur : un clic sur l'image lit ou met en pause, la barre du bas déplace.
+                if item.info.as_ref().is_some_and(|i| i.has_video) {
+                    let playing = playback.is_some_and(|p| p.0);
+                    let label = if playing { tr("Mettre en pause") } else { tr("Lire la vidéo") };
+                    let resp = ui.interact(picture, Id::unique("preview-play"), Sense::click()).on_hover_cursor(egui::CursorIcon::PointingHand);
+                    resp.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Button, true, label));
+                    if resp.clicked() {
+                        self.actions.push(Action::TogglePlay(item.id));
+                    }
+                    if !playing {
+                        let (c, hover) = (picture.center(), resp.hovered());
+                        p.circle(c, if hover { 31.0 } else { 29.0 }, Color32::from_black_alpha(if hover { 185 } else { 150 }), Stroke::new(1.0, Color32::from_white_alpha(if hover { 110 } else { 60 })));
+                        p.add(egui::Shape::convex_polygon(vec![c + vec2(-7.5, -12.0), c + vec2(13.0, 0.0), c + vec2(-7.5, 12.0)], if hover { t.accent } else { t.ink_strong }, Stroke::NONE));
+                    }
+                    resp.on_hover_text(tr("L'aperçu se lit sans le son"));
+                    if let Some((_, position, duration, can_seek)) = playback.filter(|p| p.2 > 0.0) {
+                        let zone = Rect::from_min_max(pos2(picture.left(), picture.bottom() - 10.0), picture.max);
+                        let mut active = false;
+                        if can_seek {
+                            let scrub = ui.interact(zone, Id::unique("preview-scrub"), Sense::click_and_drag()).on_hover_cursor(egui::CursorIcon::PointingHand);
+                            scrub.widget_info(|| egui::WidgetInfo::slider(true, position, tr("Position dans la vidéo")));
+                            active = scrub.hovered() || scrub.dragged();
+                            if let Some(pointer) = scrub.interact_pointer_pos().filter(|_| scrub.clicked() || scrub.dragged()) {
+                                self.actions.push(Action::SeekTo(f64::from(((pointer.x - zone.left()) / zone.width()).clamp(0.0, 1.0)) * duration));
+                            }
+                        }
+                        let bar = Rect::from_min_max(pos2(zone.left(), zone.bottom() - if active { 5.0 } else { 3.0 }), zone.max);
+                        let done = bar.left() + bar.width() * (position / duration).clamp(0.0, 1.0) as f32;
+                        p.rect_filled(bar, CornerRadius::ZERO, Color32::from_white_alpha(46));
+                        p.rect_filled(Rect::from_min_max(bar.min, pos2(done, bar.bottom())), CornerRadius::ZERO, t.accent);
+                        if active {
+                            p.circle_filled(pos2(done, bar.center().y), 5.0, t.ink_strong);
+                        }
                     }
                 }
                 // Retirer cette vidéo : un bouton posé sur l'image, sauf pendant qu'elle est traitée.
@@ -1136,6 +1203,22 @@ impl eframe::App for App {
         // Toujours une vidéo choisie, tant qu'il y en a une.
         if self.selected.is_none_or(|id| !self.items.iter().any(|i| i.id == id)) {
             self.selected = self.items.first().map(|i| i.id);
+        }
+        // Le lecteur suit la vidéo choisie : une autre est choisie, il se ferme.
+        if self.player.as_ref().is_some_and(|p| Some(p.item) != self.selected) {
+            self.player = None;
+        }
+        if let Some(why) = self.player.as_ref().and_then(|p| p.error()) {
+            self.player = None;
+            self.notify(Icon::TriangleAlert, tf("Cette vidéo ne peut pas être lue ici ({0})", &[("0", &why)]));
+        }
+        // La barre d'espace lit ou met en pause, hors d'un champ de saisie ou d'une fenêtre ouverte.
+        if self.dialog.is_none()
+            && let Some(id) = self.selected
+            && ctx.memory(|m| m.focused().is_none())
+            && ctx.input(|i| i.key_pressed(egui::Key::Space))
+        {
+            self.actions.push(Action::TogglePlay(id));
         }
         // Le temps restant avance même quand l'encodeur ne dit rien.
         if self.running() {

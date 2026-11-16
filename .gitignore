@@ -1,0 +1,7 @@
+/target
+/dist
+# Les bibliothèques de FFmpeg compilées par scripts/ffmpeg-libs.sh
+/vcpkg_installed
+*.new.png
+*.diff.png
+*.old.png

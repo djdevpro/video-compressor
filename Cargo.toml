@@ -1,0 +1,47 @@
+[package]
+name = "video-compressor"
+version = "0.1.0"
+edition = "2024"
+description = "Compresser et convertir une vidéo d'un clic droit, sous Windows"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/djdevpro/video-compressor"
+
+[dependencies]
+eframe = "0.37"
+egui = "0.37"
+# Les icônes Lucide (police + enum `Icon`), indépendantes de la version d'egui.
+lucide-icons = "1.70"
+rfd = "0.17.2"
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.154"
+sha2 = "0.10.9"
+sys-locale = "0.3.2"
+ureq = "3.5.1"
+# FFmpeg, lié statiquement dans l'exécutable : démultiplexage, décodage, filtres, encodage.
+# Ses bibliothèques sont compilées par vcpkg (vcpkg.json, scripts/ffmpeg-libs.sh).
+ffmpeg-next = { version = "9.1", default-features = false, features = ["codec", "format", "filter", "software-scaling", "software-resampling", "static"] }
+# Les WebP animés : FFmpeg ne sait pas les lire, on décode les images ici et on les lui donne.
+image-webp = "0.2.4"
+
+# Le menu du clic droit de l'Explorateur (registre de l'utilisateur).
+[target.'cfg(windows)'.dependencies]
+winreg = "0.56"
+
+# L'icône de l'exécutable Windows (build.rs).
+[build-dependencies]
+embed-resource = "3.0"
+
+# Sous Linux et macOS, la liste des bibliothèques dont FFmpeg dépend (build.rs).
+[target.'cfg(unix)'.build-dependencies]
+pkg-config = "0.3"
+
+[dev-dependencies]
+egui_kittest = { version = "0.37", features = ["wgpu", "eframe"] }
+
+# egui et wgpu optimisés même en debug : l'interface reste fluide pendant qu'on code.
+[profile.dev.package."*"]
+opt-level = 2
+
+[profile.release]
+lto = "thin"
+strip = true

@@ -1,0 +1,11 @@
+# FFmpeg est lié statiquement dans l'exécutable. Ses bibliothèques, compilées par
+# `scripts/ffmpeg-libs.sh`, sont attendues dans `vcpkg_installed/current`.
+# Une variable `FFMPEG_DIR` déjà posée dans l'environnement l'emporte (la CI s'en sert pour le
+# binaire universel de macOS).
+[env]
+FFMPEG_DIR = { value = "vcpkg_installed/current", relative = true }
+
+# Windows : le runtime C et C++ de Microsoft est lié en statique, comme les bibliothèques de
+# FFmpeg (triplet x64-windows-static-release). L'exécutable ne réclame aucune DLL à installer.
+[target.x86_64-pc-windows-msvc]
+rustflags = ["-C", "target-feature=+crt-static"]

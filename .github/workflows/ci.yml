@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build:
+    strategy:
+      # Chaque plateforme va au bout, même si une autre échoue.
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-22.04, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v5
+
+      # La fenêtre (egui), puis de quoi compiler FFmpeg et lire ses en-têtes.
+      - name: Linux dependencies
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libxkbcommon-dev libgtk-3-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libwayland-dev fonts-dejavu-core nasm pkg-config autoconf automake libtool libclang-dev
+
+      - name: macOS dependencies
+        if: runner.os == 'macOS'
+        run: brew install nasm pkg-config autoconf automake libtool
+
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+
+      # Les bibliothèques statiques de FFmpeg, liées dans l'exécutable. Longues à compiler : gardées
+      # en cache tant que vcpkg.json ne change pas.
+      - name: FFmpeg libraries cache
+        id: ffmpeg
+        uses: actions/cache@v4
+        with:
+          path: vcpkg_installed
+          key: ffmpeg-libs-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('vcpkg.json', 'scripts/ffmpeg-libs.sh') }}
+
+      - name: FFmpeg libraries
+        if: steps.ffmpeg.outputs.cache-hit != 'true'
+        shell: bash
+        run: bash scripts/ffmpeg-libs.sh
+
+      # Tous les tests : moteur, interface sans GPU, et de vrais encodages avec le FFmpeg lié.
+      - name: Tests
+        run: cargo test
+
+      - name: Build
+        shell: bash
+        run: |
+          set -o pipefail
+          cargo build
+          ./target/debug/video-compressor --version | tee version.txt
+          grep -q "FFmpeg" version.txt

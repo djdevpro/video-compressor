@@ -1,0 +1,29 @@
+{
+  "$comment": "Les bibliothèques de FFmpeg liées statiquement dans l'exécutable (voir scripts/ffmpeg-libs.sh).",
+  "name": "video-compressor",
+  "version-string": "0.1.0",
+  "builtin-baseline": "8f363bdc11359ede4bc51e5eb32a2617538049c8",
+  "dependencies": [
+    {
+      "name": "ffmpeg",
+      "default-features": false,
+      "features": [
+        "avcodec",
+        "avformat",
+        "avfilter",
+        "swscale",
+        "swresample",
+        "gpl",
+        "x264",
+        "x265",
+        "vpx",
+        "svt-av1",
+        "dav1d",
+        "opus",
+        "mp3lame",
+        "webp",
+        "zlib"
+      ]
+    }
+  ]
+}

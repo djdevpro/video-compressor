@@ -11,11 +11,12 @@ use serde::{Deserialize, Serialize};
 
 use crate::i18n::tr;
 
-/// La couleur d'accent : le corail par défaut, quatre autres au choix.
+/// La couleur d'accent : le vert citron par défaut, quatre autres au choix.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Accent {
-    Amber,
     #[default]
+    Lime,
+    Amber,
     Coral,
     Green,
     Blue,
@@ -32,10 +33,11 @@ struct AccentSet {
 }
 
 impl Accent {
-    pub const ALL: [Self; 5] = [Self::Coral, Self::Amber, Self::Green, Self::Blue, Self::Violet];
+    pub const ALL: [Self; 6] = [Self::Lime, Self::Blue, Self::Coral, Self::Amber, Self::Green, Self::Violet];
 
     pub fn label(self) -> &'static str {
         match self {
+            Self::Lime => tr("Citron"),
             Self::Amber => tr("Ambre"),
             Self::Coral => tr("Corail"),
             Self::Green => tr("Vert"),
@@ -52,10 +54,11 @@ impl Accent {
     fn set(self) -> AccentSet {
         let s = |accent, hover, ink, soft, on| AccentSet { accent: hex(accent), hover: hex(hover), ink: hex(ink), soft: hex(soft), on: hex(on) };
         match self {
+            Self::Lime => s(0xc4f042, 0xd4f76c, 0xc4f042, 0x232a12, 0x10130a),
             Self::Amber => s(0xf4a945, 0xffbb62, 0xf6b65c, 0x4a3215, 0x1d1407),
             Self::Coral => s(0xff7f66, 0xff9883, 0xff9a85, 0x4a2219, 0x1f0c07),
             Self::Green => s(0x6fcf8e, 0x86dba2, 0x8fdca6, 0x1f3a28, 0x07140c),
-            Self::Blue => s(0x6aa6ff, 0x84b6ff, 0x8db9ff, 0x1b2c47, 0x06101f),
+            Self::Blue => s(0x5b9dff, 0x7db1ff, 0x7db1ff, 0x1b2c47, 0x06101f),
             Self::Violet => s(0xb48cff, 0xc3a3ff, 0xc6a6ff, 0x33244f, 0x120a20),
         }
     }
@@ -98,6 +101,16 @@ pub struct Tokens {
     pub neutral_bg: Color32,
     pub neutral_fg: Color32,
     pub danger: Color32,
+    /// Fond de la colonne des choix.
+    pub panel: Color32,
+    /// Fond des cadres et des listes.
+    pub well: Color32,
+    /// Filets entre deux cases jointives.
+    pub rule: Color32,
+    /// Croix de repère.
+    pub mark: Color32,
+    /// Points de la trame.
+    pub dot: Color32,
 }
 
 const fn hex(rgb: u32) -> Color32 {
@@ -114,23 +127,28 @@ const DARK: Tokens = Tokens {
     bg: hex(0x121212),
     surface: hex(0x181818),
     raised: hex(0x242424),
-    input: hex(0x202020),
-    line: hex(0x303030),
-    line_strong: hex(0x464646),
-    ink: hex(0xe7e7e7),
-    ink_strong: hex(0xf3f3f3),
-    muted: hex(0xaaaaaa),
-    faint: hex(0x7c7c7c),
-    accent: hex(0xff7f66),
-    accent_hover: hex(0xff9883),
-    accent_ink: hex(0xff9a85),
-    accent_soft: hex(0x4a2219),
-    on_accent: hex(0x1f0c07),
+    input: hex(0x121212),
+    line: hex(0x262626),
+    line_strong: hex(0x333333),
+    ink: hex(0xededed),
+    ink_strong: hex(0xf5f5f5),
+    muted: hex(0xa8a8a8),
+    faint: hex(0x8a8a8a),
+    accent: hex(0xc4f042),
+    accent_hover: hex(0xd4f76c),
+    accent_ink: hex(0xc4f042),
+    accent_soft: hex(0x232a12),
+    on_accent: hex(0x10130a),
     good_bg: hex(0x2c4526),
     good_fg: hex(0xb4d89a),
     neutral_bg: hex(0x333333),
     neutral_fg: hex(0xd3d3d3),
-    danger: hex(0xf2685e),
+    danger: hex(0xff8a80),
+    panel: hex(0x141414),
+    well: hex(0x161616),
+    rule: hex(0x2c2c2c),
+    mark: hex(0x585858),
+    dot: hex(0x2a2a2a),
 };
 
 fn accent_id() -> Id {
@@ -176,10 +194,10 @@ pub fn scrim() -> Color32 {
 
 // ---- mesures -----------------------------------------------------------------------------------
 
-pub const TOPBAR_H: f32 = 50.0;
-pub const STATUS_H: f32 = 34.0;
-pub const CONTROL_H: f32 = 34.0;
-pub const PANEL_W: f32 = 392.0;
+pub const TOPBAR_H: f32 = 44.0;
+pub const STATUS_H: f32 = 28.0;
+pub const CONTROL_H: f32 = 32.0;
+pub const PANEL_W: f32 = 500.0;
 pub const R_CARD: u8 = 10;
 pub const R_CTRL: u8 = 7;
 pub const R_CHIP: u8 = 5;
@@ -242,8 +260,8 @@ pub fn apply(ctx: &egui::Context, accent: Accent) {
         style.spacing.scroll = egui::style::ScrollStyle { dormant_handle_opacity: 0.35, ..egui::style::ScrollStyle::floating() };
         style.text_styles = [
             (TextStyle::Heading, FontId::new(22.0, bold())),
-            (TextStyle::Body, FontId::new(13.5, FontFamily::Proportional)),
-            (TextStyle::Button, FontId::new(13.5, semibold())),
+            (TextStyle::Body, FontId::new(13.0, FontFamily::Proportional)),
+            (TextStyle::Button, FontId::new(13.0, semibold())),
             (TextStyle::Small, FontId::new(12.0, FontFamily::Proportional)),
             (TextStyle::Monospace, FontId::new(12.5, FontFamily::Monospace)),
         ]

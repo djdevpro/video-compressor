@@ -3,7 +3,7 @@
 //! lecteurs d'écran et les tests.
 
 use egui::{
-    Align, Align2, Color32, CornerRadius, CursorIcon, FontFamily, FontId, Frame, Id, Layout, Margin, Rect, ResizeDirection, Response, Role, Sense, Shape, Stroke,
+    Align, Align2, Color32, CornerRadius, CursorIcon, FontFamily, FontId, Frame, Id, Layout, Margin, Rect, ResizeDirection, Response, Role, Sense, Stroke,
     StrokeKind, Ui, Vec2, ViewportCommand, WidgetInfo, pos2, vec2,
 };
 
@@ -69,25 +69,10 @@ pub fn elided(ui: &Ui, text: &str, font: &FontId, max_w: f32) -> String {
 
 // ---- pastilles ---------------------------------------------------------------------------------
 
-#[derive(Clone, Copy)]
-pub enum Tone {
-    Neutral,
-    Accent,
-    Danger,
-}
-
-/// Fond, encre et contour d'une pastille.
-fn tone_colors(t: &Tokens, tone: Tone) -> (Color32, Color32, Stroke) {
-    match tone {
-        Tone::Neutral => (t.neutral_bg, t.neutral_fg, Stroke::NONE),
-        Tone::Accent => (t.accent_soft, t.accent_ink, Stroke::new(1.0, tint(t.accent, 0.55))),
-        Tone::Danger => (tint(t.danger, 0.16), t.danger, Stroke::NONE),
-    }
-}
-
-pub fn chip(ui: &mut Ui, text: &str, tone: Tone) -> Response {
+/// Une pastille dans la couleur d'accent (« Nouvelle », « Bêta »).
+pub fn chip(ui: &mut Ui, text: &str) -> Response {
     let t = tok(ui);
-    let (bg, fg, stroke) = tone_colors(&t, tone);
+    let (bg, fg, stroke) = (t.accent_soft, t.accent_ink, Stroke::new(1.0, tint(t.accent, 0.55)));
     let galley = ui.painter().layout_no_wrap(text.to_owned(), FontId::new(12.0, theme::semibold()), fg);
     let (rect, resp) = ui.allocate_exact_size(vec2(galley.size().x + 16.0, 22.0), Sense::hover());
     resp.widget_info(|| WidgetInfo::labeled(Role::Label, true, text));
@@ -107,7 +92,6 @@ pub enum Kind {
     Secondary,
     /// Texte seul, fond au survol.
     Ghost,
-    Danger,
 }
 
 pub fn button(ui: &mut Ui, icon: Option<Icon>, text: &str, kind: Kind) -> Response {
@@ -132,7 +116,6 @@ pub fn button_sized(ui: &mut Ui, icon: Option<Icon>, text: &str, kind: Kind, hei
         Kind::Primary => (mix(t.accent, t.accent_hover, hover), t.on_accent, Stroke::NONE),
         Kind::Secondary => (mix(Color32::TRANSPARENT, t.raised, hover), t.ink_strong, Stroke::new(1.0, mix(t.line_strong, t.faint, hover))),
         Kind::Ghost => (tint(t.ink, 0.07 * hover), t.ink, Stroke::NONE),
-        Kind::Danger => (tint(t.danger, 0.08 + 0.10 * hover), t.danger, Stroke::new(1.0, tint(t.danger, 0.45))),
     };
     if !enabled {
         // Désactivé : neutre et lisible, plutôt qu'un accent délavé.
@@ -172,71 +155,7 @@ pub fn icon_button(ui: &mut Ui, icon: Icon, tip: &str, size: f32) -> Response {
     resp.on_hover_text(tip).on_hover_cursor(CursorIcon::PointingHand)
 }
 
-/// Un préréglage : une petite tuile à contour, icône et nom, qui s'allume quand il est appliqué.
-pub fn preset_tile(ui: &mut Ui, icon: Icon, text: &str, selected: bool, width: f32) -> Response {
-    let t = tok(ui);
-    let (rect, resp) = ui.allocate_exact_size(vec2(width, 32.0), Sense::click());
-    resp.widget_info(|| WidgetInfo::selected(Role::Button, true, selected, text));
-    let hover = ui.ctx().animate_bool(resp.id.with("hover"), resp.hovered());
-    let p = ui.painter();
-    let (fill, stroke, fg) = if selected {
-        (t.accent_soft, Stroke::new(1.0, tint(t.accent, 0.7)), t.ink_strong)
-    } else {
-        (mix(t.bg, t.raised, hover), Stroke::new(1.0, mix(t.line, t.line_strong, hover)), mix(t.muted, t.ink_strong, hover))
-    };
-    p.rect(rect, CornerRadius::same(R_CTRL), fill, stroke, StrokeKind::Inside);
-    let font = FontId::new(12.5, theme::semibold());
-    let galley = p.layout_no_wrap(text.to_owned(), font, fg);
-    let content = 15.0 + 6.0 + galley.size().x;
-    let x = rect.center().x - content / 2.0;
-    icons::paint(p, pos2(x + 7.5, rect.center().y), icon, 14.0, if selected { t.accent_ink } else { fg });
-    p.galley(pos2(x + 21.0, rect.center().y - galley.size().y / 2.0), galley, fg);
-    resp.on_hover_cursor(CursorIcon::PointingHand)
-}
-
-/// La zone où déposer des fichiers : un cadre pointillé, cliquable.
-pub fn drop_zone(ui: &mut Ui, size: Vec2, active: bool, name: &str) -> (Rect, Response) {
-    let t = tok(ui);
-    let (rect, resp) = ui.allocate_exact_size(size, Sense::click());
-    resp.widget_info(|| WidgetInfo::labeled(Role::Button, true, name));
-    let hover = ui.ctx().animate_bool(resp.id.with("hover"), resp.hovered() || active);
-    let p = ui.painter();
-    p.rect_filled(rect, CornerRadius::same(R_CARD), tint(t.accent, 0.05 * hover));
-    let r = rect.shrink(0.5);
-    let points = [r.left_top(), r.right_top(), r.right_bottom(), r.left_bottom(), r.left_top()];
-    p.extend(Shape::dashed_line(&points, Stroke::new(1.0, mix(t.line_strong, t.accent, hover)), 6.0, 5.0));
-    (rect, resp.on_hover_cursor(CursorIcon::PointingHand))
-}
-
 // ---- choix -------------------------------------------------------------------------------------
-
-/// Contrôle segmenté : l'option choisie sur fond doux d'accent.
-pub fn segmented<T: Copy + PartialEq>(ui: &mut Ui, id: &str, value: &mut T, options: &[(T, &str)], width: f32) -> bool {
-    let t = tok(ui);
-    let font = FontId::new(12.5, theme::semibold());
-    let (rect, _) = ui.allocate_exact_size(vec2(width, theme::CONTROL_H), Sense::hover());
-    let p = ui.painter().clone();
-    p.rect(rect, CornerRadius::same(R_CTRL), t.input, Stroke::new(1.0, t.line_strong), StrokeKind::Inside);
-    let w = rect.width() / options.len() as f32;
-    let mut changed = false;
-    for (i, (option, label)) in options.iter().enumerate() {
-        let cell = Rect::from_min_size(pos2(rect.left() + w * i as f32, rect.top()), vec2(w, rect.height()));
-        let resp = ui.interact(cell, Id::unique((id, i)), Sense::click()).on_hover_cursor(CursorIcon::PointingHand);
-        let selected = *value == *option;
-        resp.widget_info(|| WidgetInfo::selected(Role::RadioButton, true, selected, *label));
-        if resp.clicked() && !selected {
-            *value = *option;
-            changed = true;
-        }
-        let fg = if selected || resp.hovered() { t.ink_strong } else { t.muted };
-        if selected {
-            p.rect(cell.shrink(2.0), CornerRadius::same(R_CTRL - 2), t.accent_soft, Stroke::new(1.0, tint(t.accent, 0.7)), StrokeKind::Inside);
-        }
-        let galley = p.layout_no_wrap(label.to_string(), font.clone(), fg);
-        p.galley(cell.center() - galley.size() / 2.0, galley, fg);
-    }
-    changed
-}
 
 /// Interrupteur arrondi.
 pub fn switch(ui: &mut Ui, on: &mut bool, a11y_label: &str) -> Response {
@@ -366,42 +285,6 @@ pub fn vsep(ui: &mut Ui, height: f32) {
     ui.painter().vline(rect.center().x, rect.y_range(), t.hairline());
 }
 
-/// Une vignette de vidéo : l'image arrondie, ou une tuile neutre avec une icône.
-pub fn thumbnail(ui: &mut Ui, texture: Option<&egui::TextureHandle>, size: Vec2, placeholder: Icon) -> Response {
-    let t = tok(ui);
-    let (rect, resp) = ui.allocate_exact_size(size, Sense::hover());
-    let p = ui.painter();
-    p.rect_filled(rect, CornerRadius::same(5), t.raised);
-    match texture {
-        Some(tex) => {
-            // L'image garde ses proportions, centrée dans la tuile.
-            let img = tex.size_vec2();
-            let k = (rect.width() / img.x).min(rect.height() / img.y);
-            let fitted = Rect::from_center_size(rect.center(), img * k);
-            egui::Image::new(tex).corner_radius(CornerRadius::same(5)).paint_at(ui, fitted);
-        }
-        None => icons::paint(p, rect.center(), placeholder, 20.0, t.faint),
-    }
-    ui.painter().rect_stroke(rect, CornerRadius::same(5), Stroke::new(1.0, t.line), StrokeKind::Inside);
-    resp
-}
-
-/// Une ligne de réglage : le nom à gauche, le contrôle à droite, sur une hauteur fixe.
-pub fn setting_row<R>(ui: &mut Ui, label: &str, add: impl FnOnce(&mut Ui) -> R) -> R {
-    let t = tok(ui);
-    ui.horizontal(|ui| {
-        ui.set_height(42.0);
-        ui.add_space(14.0);
-        ui.label(egui::RichText::new(label).font(FontId::new(13.0, theme::medium())).color(t.ink));
-        ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-            ui.add_space(12.0);
-            add(ui)
-        })
-        .inner
-    })
-    .inner
-}
-
 // ---- fenêtre sans bordure ----------------------------------------------------------------------
 
 /// Glisser la zone déplace la fenêtre, double-cliquer la maximise. À appeler avant les boutons.
@@ -478,4 +361,101 @@ pub fn resize_from_edge(ctx: &egui::Context, edge: Option<(ResizeDirection, Curs
 /// Une police mono (chemins, commandes).
 pub fn mono(size: f32) -> FontId {
     FontId::new(size, FontFamily::Monospace)
+}
+
+// ---- contrôles de la nouvelle interface --------------------------------------------------------
+
+/// Des choix jointifs sur une ligne : un seul contour, des filets entre les cases, la case choisie
+/// teintée d'accent. `mono` écrit les libellés en police à chasse fixe (formats, nombres).
+pub fn seg<T: Copy + PartialEq>(ui: &mut Ui, name: &str, value: &mut T, options: &[(T, &str)], width: f32, mono: bool) -> bool {
+    let t = tok(ui);
+    let font = if mono { FontId::new(11.0, FontFamily::Monospace) } else { FontId::new(12.0, theme::medium()) };
+    let (rect, _) = ui.allocate_exact_size(vec2(width, 30.0), Sense::hover());
+    let p = ui.painter().clone();
+    p.rect(rect, CornerRadius::same(7), t.bg, Stroke::new(1.0, t.line_strong), StrokeKind::Inside);
+    let n = options.len().max(1);
+    let w = (rect.width() - 2.0) / n as f32;
+    let mut changed = false;
+    for (i, (option, label)) in options.iter().enumerate() {
+        let cell = Rect::from_min_size(pos2(rect.left() + 1.0 + w * i as f32, rect.top() + 1.0), vec2(w, rect.height() - 2.0));
+        let resp = ui.interact(cell, Id::unique((name, i)), Sense::click()).on_hover_cursor(CursorIcon::PointingHand);
+        let selected = *value == *option;
+        resp.widget_info(|| WidgetInfo::selected(Role::RadioButton, true, selected, *label));
+        if resp.clicked() && !selected {
+            *value = *option;
+            changed = true;
+        }
+        let previous_selected = i > 0 && *value == options[i - 1].0;
+        if i > 0 && !selected && !previous_selected {
+            p.line_segment([pos2(cell.left().round() + 0.5, cell.top()), pos2(cell.left().round() + 0.5, cell.bottom())], Stroke::new(1.0, t.rule));
+        }
+        if selected {
+            let radius = CornerRadius { nw: if i == 0 { 6 } else { 0 }, sw: if i == 0 { 6 } else { 0 }, ne: if i + 1 == n { 6 } else { 0 }, se: if i + 1 == n { 6 } else { 0 } };
+            p.rect(cell, radius, tint(t.accent, 0.13), Stroke::new(1.0, tint(t.accent, 0.55)), StrokeKind::Inside);
+        }
+        let fg = if selected { t.accent_ink } else if resp.hovered() { t.ink_strong } else { t.muted };
+        let galley = p.layout_no_wrap(label.to_string(), font.clone(), fg);
+        p.galley(cell.center() - galley.size() / 2.0, galley, fg);
+    }
+    changed
+}
+
+/// Le curseur de compression : une ligne graduée tous les dix pour cent, pleine d'accent jusqu'au
+/// bouton. Renvoie `true` quand la valeur change.
+pub fn graduated_slider(ui: &mut Ui, name: &str, value: &mut u8, width: f32) -> bool {
+    let t = tok(ui);
+    let (rect, resp) = ui.allocate_exact_size(vec2(width, 18.0), Sense::click_and_drag());
+    let current = *value;
+    resp.widget_info(|| WidgetInfo::slider(true, f64::from(current), name));
+    let track = Rect::from_min_max(pos2(rect.left() + 7.0, rect.center().y - 1.0), pos2(rect.right() - 7.0, rect.center().y + 1.0));
+    let mut changed = false;
+    if let Some(pos) = resp.interact_pointer_pos().filter(|_| resp.dragged() || resp.clicked()) {
+        let new = (((pos.x - track.left()) / track.width()).clamp(0.0, 1.0) * 100.0).round() as u8;
+        changed = new != *value;
+        *value = new;
+    }
+    let p = ui.painter();
+    for i in 0..=10 {
+        let x = (track.left() + track.width() * i as f32 / 10.0).round() + 0.5;
+        p.line_segment([pos2(x, track.top() - 2.0), pos2(x, track.bottom() + 2.0)], Stroke::new(1.0, t.line_strong));
+    }
+    p.rect_filled(track, CornerRadius::same(1), theme::rgb(0x2a2a2a));
+    let knob = pos2(track.left() + track.width() * f32::from(*value) / 100.0, rect.center().y);
+    p.rect_filled(Rect::from_min_max(track.min, pos2(knob.x, track.bottom())), CornerRadius::same(1), t.accent);
+    p.circle_filled(knob, 10.0, tint(t.accent, if resp.hovered() || resp.dragged() { 0.36 } else { 0.24 }));
+    p.circle_filled(knob, 7.0, t.ink);
+    changed
+}
+
+/// Le bouton qui lance le travail : haut, plein d'accent, avec son reflet et sa lueur. `danger`
+/// en fait le bouton d'arrêt, à contour.
+pub fn launch_button(ui: &mut Ui, icon: Icon, text: &str, width: f32, danger: bool) -> Response {
+    let t = tok(ui);
+    let (rect, resp) = ui.allocate_exact_size(vec2(width, 48.0), Sense::click());
+    let enabled = ui.is_enabled();
+    resp.widget_info(|| WidgetInfo::labeled(Role::Button, enabled, text));
+    let hover = ui.ctx().animate_bool(resp.id.with("hover"), resp.hovered() && enabled);
+    let rect = if resp.is_pointer_button_down_on() && enabled { rect.translate(vec2(0.0, 1.0)) } else { rect };
+    let p = ui.painter();
+    let fg = match (enabled, danger) {
+        (false, _) => {
+            p.rect(rect, CornerRadius::same(9), theme::rgb(0x1c1c1c), Stroke::new(1.0, t.line), StrokeKind::Inside);
+            t.faint
+        }
+        (true, true) => {
+            p.rect(rect, CornerRadius::same(9), tint(t.danger, 0.08 + 0.08 * hover), Stroke::new(1.0, tint(t.danger, 0.5)), StrokeKind::Inside);
+            t.danger
+        }
+        (true, false) => {
+            crate::draw::glow(p, rect, t.accent);
+            p.rect_filled(rect, CornerRadius::same(9), mix(t.accent, t.accent_hover, hover));
+            p.line_segment([pos2(rect.left() + 8.0, rect.top() + 1.0), pos2(rect.right() - 8.0, rect.top() + 1.0)], Stroke::new(1.0, Color32::from_white_alpha(110)));
+            t.on_accent
+        }
+    };
+    let galley = p.layout_no_wrap(text.to_owned(), FontId::new(14.5, theme::bold()), fg);
+    let x = rect.center().x - (galley.size().x + 24.0) / 2.0;
+    icons::paint(p, pos2(x + 8.0, rect.center().y), icon, 16.0, fg);
+    p.galley(pos2(x + 24.0, rect.center().y - galley.size().y / 2.0), galley, fg);
+    if enabled { resp.on_hover_cursor(CursorIcon::PointingHand) } else { resp }
 }

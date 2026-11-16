@@ -20,8 +20,8 @@ use crate::queue::{self, Item, Job, Msg, State};
 use crate::settings::{Audio, Container, Encode, Fps, Mode, Resolution, Settings, Speed, VideoCodec};
 
 /// Taille par défaut de la fenêtre, et taille minimale (pour traquer les effets de bord).
-const NORMAL: (f32, f32) = (1120.0, 740.0);
-const MINI: (f32, f32) = (940.0, 600.0);
+const NORMAL: (f32, f32) = (1080.0, 740.0);
+const MINI: (f32, f32) = (960.0, 680.0);
 
 fn harness_sized((w, h): (f32, f32)) -> Harness<'static, App> {
     let mut harness = Harness::builder().with_size(egui::vec2(w, h)).with_max_steps(40).build_eframe(|cc| App::with_settings(cc, Settings::default(), true));
@@ -66,32 +66,70 @@ fn fill(app: &mut App) {
     app.menu_on = true;
 }
 
+/// Une image de synthèse en 16/9, pour voir l'aperçu en grand dans les captures.
+fn picture(h: &Harness<'static, App>) -> egui::TextureHandle {
+    let (w, hgt) = (640usize, 360usize);
+    let mut rgba = Vec::with_capacity(w * hgt * 4);
+    for y in 0..hgt {
+        for x in 0..w {
+            let (fx, fy) = (x as f32 / w as f32, y as f32 / hgt as f32);
+            // Un ciel, une colline, un soleil : de quoi juger le cadre.
+            let hill = 0.62 + 0.10 * (fx * 6.3).sin() + 0.05 * (fx * 17.0).cos();
+            let sun = ((fx - 0.72).powi(2) * 3.2 + (fy - 0.30).powi(2)).sqrt();
+            let color = if fy > hill {
+                [(38.0 + 30.0 * fy) as u8, (52.0 + 40.0 * (1.0 - fy)) as u8, (60.0 + 20.0 * fx) as u8]
+            } else if sun < 0.09 {
+                [246, 226, 170]
+            } else {
+                [(70.0 + 150.0 * fy) as u8, (96.0 + 80.0 * fy) as u8, (150.0 - 40.0 * fy) as u8]
+            };
+            rgba.extend_from_slice(&[color[0], color[1], color[2], 255]);
+        }
+    }
+    h.ctx.load_texture("mire", egui::ColorImage::from_rgba_unmultiplied([w, hgt], &rgba), egui::TextureOptions::LINEAR)
+}
+
 #[test]
 fn fenetre_vide() {
     let h = harness();
-    h.get_by_label("Fichiers");
+    h.get_by_label("Que veux-tu en faire");
     h.get_by_label("Choisir des vidéos");
     h.get_by_label("Compresser");
-    assert!(has(&h, "Format") && has(&h, "Codec vidéo") && has(&h, "Son"));
+    for choice in ["Web 1080p", "Léger 720p", "Sous 10 Mo", "GIF animé", "Garder seulement le son", "Réglages fins"] {
+        h.get_by_label(choice);
+    }
+    assert!(!has(&h, "Format"), "les réglages fins sont repliés au départ");
     h.get_by_label(format!("FFmpeg {} intégré", engine::version()).as_str());
     assert!(h.state().items.is_empty() && !h.state().running());
 }
 
 #[test]
-fn un_prereglage_remplit_les_reglages() {
+fn un_choix_remplit_les_reglages() {
     let mut h = harness();
-    click(&mut h, "GIF");
+    click(&mut h, "GIF animé");
     let enc = h.state().settings.encode;
     assert_eq!((enc.container, enc.resolution, enc.fps), (Container::Gif, Resolution::P480, Fps::F15));
-    assert!(!has(&h, "Codec vidéo") && !has(&h, "Son"), "un GIF n'a ni codec à choisir ni son");
     h.get_by_label("Convertir");
+    click(&mut h, "Réglages fins");
+    assert!(h.state().fine_open);
+    assert!(has(&h, "Format") && has(&h, "Résolution"));
+    assert!(!has(&h, "Codec") && !has(&h, "Son"), "un GIF n'a ni codec à choisir ni son");
+    // Dépliés, les choix tiennent sur une ligne, sous leur nom court.
     click(&mut h, "Sous 10 Mo");
     let enc = h.state().settings.encode;
     assert_eq!((enc.container, enc.mode, enc.target_mb), (Container::Mp4, Mode::TargetSize, 10.0));
     h.get_by_label("Taille à ne pas dépasser");
-    click(&mut h, "Qualité");
+    assert!(has(&h, "Codec") && has(&h, "Son"));
+    click(&mut h, "Par la qualité");
     assert_eq!(h.state().settings.encode.mode, Mode::Quality);
     h.get_by_label("Degré de compression");
+    click(&mut h, "H.265");
+    assert_eq!(h.state().settings.encode.codec, VideoCodec::H265);
+    click(&mut h, "Son seul");
+    assert_eq!(h.state().settings.encode.container, Container::Mp3);
+    assert!(!has(&h, "Codec") && !has(&h, "Résolution") && has(&h, "Son"));
+    click(&mut h, "Réglages fins");
+    assert!(!h.state().fine_open && !has(&h, "Format"));
 }
 
 #[test]
@@ -111,28 +149,50 @@ fn preferences_et_clic_droit() {
     assert_eq!(h.state().dialog, Some(Dialog::Update));
 }
 
+/// La vidéo choisie passe en grand et dit où elle en est ; les autres attendent dessous.
 #[test]
-fn la_liste_montre_chaque_etat() {
+fn la_selection_montre_chaque_etat() {
     let mut h = harness();
     fill(h.state_mut());
     h.run_steps(3);
-    for label in ["Prêt", "En attente", "Échec", "2,84 Go  →  412,0 Mo  ·  85 % de moins", "Compresser 2 fichiers", "Clic droit actif"] {
+    assert_eq!(h.state().selected, Some(100), "la première vidéo est choisie d'office");
+    for label in ["Réunion de lancement.mov", "→  412,0 Mo  ·  85 % de moins", "Lire", "Montrer", "Compresser 2 fichiers", "Clic droit actif"] {
         h.get_by_label(label);
     }
-    click(&mut h, "Tout retirer");
-    assert_eq!(h.state().items.len(), 2, "les fichiers en cours ou en attente restent");
+    click(&mut h, "vieux-camescope.avi");
+    assert_eq!(h.state().selected, Some(104));
+    h.get_by_label("Échec");
+    h.get_by_label("Réessayer");
+    click(&mut h, "capture-ecran-2026-11-16.mkv");
+    h.get_by_label("En attente");
+    assert!(!has(&h, "Retirer de la liste"), "une vidéo en attente ne se retire pas");
+    click(&mut h, "autocollant-anime.webp");
+    h.get_by_label("Prêt");
+    click(&mut h, "Retirer de la liste");
+    assert_eq!(h.state().items.len(), 4);
+    assert_eq!(h.state().selected, Some(104), "la suivante prend la place de celle qu'on retire");
 }
 
-/// Aucun widget ne dépasse de la fenêtre, à la taille normale comme à la taille minimale.
+/// Aucun widget ne dépasse de la fenêtre, à la taille normale comme à la taille minimale,
+/// réglages fins repliés ou dépliés.
 #[test]
 fn rien_ne_deborde() {
     use egui_kittest::kittest::NodeT as _;
     for size in [NORMAL, MINI] {
-        let mut h = harness_sized(size);
-        fill(h.state_mut());
-        h.run_steps(3);
-        let out: Vec<String> = h.root().children_recursive().filter(|n| n.accesskit_node().bounding_box().is_some_and(|b| b.x1 > f64::from(size.0) + 1.0)).filter_map(|n| n.accesskit_node().label()).collect();
-        assert!(out.is_empty(), "dépassent à {size:?} : {out:?}");
+        for fine in [false, true] {
+            let mut h = harness_sized(size);
+            fill(h.state_mut());
+            h.state_mut().fine_open = fine;
+            h.state_mut().menu_on = false;
+            h.run_steps(3);
+            let out: Vec<String> = h
+                .root()
+                .children_recursive()
+                .filter(|n| n.accesskit_node().bounding_box().is_some_and(|b| b.x1 > f64::from(size.0) + 1.0 || b.y1 > f64::from(size.1) + 1.0 || b.x0 < -1.0))
+                .filter_map(|n| n.accesskit_node().label())
+                .collect();
+            assert!(out.is_empty(), "dépassent à {size:?} (réglages fins {fine}) : {out:?}");
+        }
     }
 }
 
@@ -144,10 +204,21 @@ fn captures() {
         let mut h = harness_sized(size);
         h.render().unwrap().save(format!("target/captures/{name}-vide.png")).unwrap();
         fill(h.state_mut());
-        h.state_mut().batch = Some(Batch { cancel: Arc::new(AtomicBool::new(false)), total: 4, finished: 1, ok: 1, failed: 0, saved: 0 });
+        let texture = picture(&h);
+        h.state_mut().items[0].thumb = Some(texture.clone());
+        h.state_mut().items[1].thumb = Some(texture);
         h.run_steps(3);
-        h.render().unwrap().save(format!("target/captures/{name}-liste.png")).unwrap();
+        h.render().unwrap().save(format!("target/captures/{name}-choix.png")).unwrap();
+        h.state_mut().batch = Some(Batch { cancel: Arc::new(AtomicBool::new(false)), total: 4, finished: 1, ok: 1, failed: 0, saved: 0 });
+        h.state_mut().selected = Some(101);
+        h.run_steps(3);
+        h.render().unwrap().save(format!("target/captures/{name}-en-cours.png")).unwrap();
         h.state_mut().batch = None;
+        h.state_mut().menu_on = false;
+        h.state_mut().selected = Some(103);
+        h.state_mut().fine_open = true;
+        h.run_steps(3);
+        h.render().unwrap().save(format!("target/captures/{name}-reglages-fins.png")).unwrap();
         h.state_mut().settings.encode = Encode { mode: Mode::TargetSize, target_mb: 10.0, resolution: Resolution::P720, ..Default::default() };
         h.state_mut().dialog = Some(Dialog::Prefs);
         h.run_steps(3);
@@ -192,7 +263,7 @@ fn e2e_formats_et_reglages() {
     assert_eq!((source.width, source.height, source.fps.round(), source.has_audio, source.vcodec.as_str()), (640, 360, 30.0, true, "h264"));
     assert!((source.duration - 3.0).abs() < 0.2, "durée {}", source.duration);
     let thumb = engine::thumbnail(&input, &source, queue::THUMB).unwrap();
-    assert_eq!((thumb.0, thumb.1, thumb.2.len()), (192, 108, 192 * 108 * 4));
+    assert_eq!((thumb.0, thumb.1, thumb.2.len()), (640, 360, 640 * 360 * 4));
     assert!(thumb.2.iter().any(|b| *b > 40), "la vignette n'est pas noire");
 
     let fast = Encode { speed: Speed::Fast, ..Default::default() };
@@ -275,7 +346,7 @@ fn e2e_video_de_telephone_redressee() {
     let source = engine::probe(&input).unwrap();
     assert_eq!((source.rotation, source.width, source.height), (90, 240, 320));
     let thumb = engine::thumbnail(&input, &source, queue::THUMB).unwrap();
-    assert_eq!((thumb.0, thumb.1), (81, 108), "la vignette est debout");
+    assert_eq!((thumb.0, thumb.1), (240, 320), "la vignette est debout, et jamais agrandie");
 
     let made = convert(&input, &Encode { speed: Speed::Fast, ..Default::default() }, "debout");
     assert_eq!((made.rotation, made.width, made.height), (0, 240, 320));

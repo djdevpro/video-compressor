@@ -2,7 +2,7 @@
 
 Compresser ou convertir une vidéo d'un clic droit, sous Windows, Linux et macOS.
 
-Un clic droit sur une vidéo ouvre une petite fenêtre avec le fichier déjà chargé. On y choisit le format, la résolution, le nombre d'images par seconde et le degré de compression, puis on lance. Le fichier produit arrive à côté de l'original, qui n'est jamais modifié.
+Un clic droit sur une vidéo ouvre une petite fenêtre avec le fichier déjà chargé. La vidéo est à gauche, ce qu'on veut en faire à droite. Un choix suffit la plupart du temps. Les réglages fins donnent la main sur le format, la résolution, le nombre d'images par seconde et le degré de compression. Le fichier produit arrive à côté de l'original, qui n'est jamais modifié.
 
 L'application est écrite en Rust avec egui. FFmpeg est compilé dans l'exécutable. Il n'y a ni programme à installer à côté, ni fichier à télécharger au premier lancement.
 
@@ -15,7 +15,7 @@ L'application est écrite en Rust avec egui. FFmpeg est compilé dans l'exécuta
 - Elle compresse selon une qualité choisie sur un curseur, ou selon une taille à ne pas dépasser. Dans ce second cas, elle recommence avec un débit corrigé si le premier essai dépasse la limite.
 - Elle redresse les vidéos de téléphone tenues debout.
 - Elle traite plusieurs fichiers à la suite. Sélectionner dix vidéos puis faire un clic droit les réunit dans la même fenêtre.
-- Elle propose cinq préréglages, Web 1080p, Léger 720p, Sous 10 Mo, GIF et Son MP3.
+- Elle propose cinq choix tout faits, Web 1080p, Léger 720p, Sous 10 Mo, GIF animé et le son seul.
 
 ## Installer
 
@@ -79,7 +79,8 @@ Le workflow [Release](.github/workflows/release.yml) se lance à la main depuis 
 | --- | --- |
 | `src/app.rs`, `src/dialogs.rs` | La fenêtre, ses actions, les préférences et la mise à jour |
 | `src/theme.rs`, `src/widgets.rs`, `src/icons.rs` | L'apparence et les widgets, repris de [Rust Project](https://github.com/djdevpro/rustproject) |
-| `src/settings.rs` | Les réglages d'encodage, les préréglages et les préférences |
+| `src/draw.rs` | Les motifs de l'écran, trame, hachures, pellicule, et les dessins des choix |
+| `src/settings.rs` | Les réglages d'encodage, les choix tout faits et les préférences |
 | `src/engine.rs` | Le moteur vidéo, sur FFmpeg lié dans l'exécutable par la crate `ffmpeg-next` |
 | `src/webp.rs` | Le décodage des WebP animés |
 | `src/queue.rs` | La file des fichiers et ses fils de travail |

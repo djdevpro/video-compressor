@@ -9,7 +9,7 @@ use crate::icons::{self, Icon};
 use crate::release::{self, Phase, VERSION};
 use crate::shell;
 use crate::theme::{self, Accent, Tokens};
-use crate::widgets::{self, Kind, Tone};
+use crate::widgets::{self, Kind};
 
 /// L'en-tête d'une fenêtre : tuile d'icône, titre, sous-titre, et la croix. Renvoie `true` si on ferme.
 fn header(ui: &mut Ui, t: &Tokens, icon: Icon, title: &str, subtitle: &str) -> bool {
@@ -181,7 +181,7 @@ pub fn update(ctx: &egui::Context, app: &mut App) {
                     ui.set_width(ui.available_width());
                     ui.horizontal(|ui| {
                         ui.label(RichText::new(tf("Version {0}", &[("0", &r.version)])).font(FontId::new(16.5, theme::bold())).color(t.ink_strong));
-                        widgets::chip(ui, if r.prerelease { tr("Bêta") } else { tr("Nouvelle") }, Tone::Accent);
+                        widgets::chip(ui, if r.prerelease { tr("Bêta") } else { tr("Nouvelle") });
                         ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                             let size = r.asset.as_ref().map(|a| i18n::size(a.size)).unwrap_or_default();
                             let when = if r.published.is_empty() { String::new() } else { tf("publiée le {0}", &[("0", &r.published)]) };

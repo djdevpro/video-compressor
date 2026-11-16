@@ -10,8 +10,8 @@ use std::time::Instant;
 use crate::engine::{self, EncodeError, MediaInfo, VIDEO_EXTS};
 use crate::settings::Encode;
 
-/// La taille des vignettes (le double de leur taille affichée : nettes sur un écran dense).
-pub const THUMB: (u32, u32) = (192, 108);
+/// La taille des vignettes : assez pour l'aperçu en grand de la vidéo choisie.
+pub const THUMB: (u32, u32) = (640, 360);
 
 pub enum State {
     /// Le moteur lit ses mesures.

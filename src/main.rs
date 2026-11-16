@@ -21,6 +21,7 @@
 
 mod app;
 mod dialogs;
+mod draw;
 mod engine;
 mod i18n;
 mod icons;
@@ -66,8 +67,8 @@ fn main() -> eframe::Result {
             .with_title("Video Compressor")
             .with_app_id("video-compressor")
             .with_icon(icon)
-            .with_inner_size([1120.0, 740.0])
-            .with_min_inner_size([940.0, 600.0])
+            .with_inner_size([1080.0, 740.0])
+            .with_min_inner_size([960.0, 680.0])
             .with_decorations(false)
             .with_drag_and_drop(true),
         ..Default::default()

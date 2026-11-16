@@ -5,7 +5,6 @@ use std::path::PathBuf;
 use serde::{Deserialize, Serialize};
 
 use crate::i18n::{Lang, tr};
-use crate::icons::Icon;
 use crate::theme::Accent;
 
 /// Le dossier des données : réglages et mises à jour téléchargées.
@@ -56,18 +55,6 @@ pub enum Container {
 impl Container {
     pub const ALL: [Self; 7] = [Self::Mp4, Self::Mkv, Self::Mov, Self::Webm, Self::Gif, Self::Webp, Self::Mp3];
 
-    pub fn label(self) -> &'static str {
-        match self {
-            Self::Mp4 => "MP4",
-            Self::Mkv => "MKV",
-            Self::Mov => "MOV",
-            Self::Webm => "WebM",
-            Self::Gif => tr("GIF animé"),
-            Self::Webp => tr("WebP animé"),
-            Self::Mp3 => tr("MP3, le son seul"),
-        }
-    }
-
     pub fn ext(self) -> &'static str {
         match self {
             Self::Mp4 => "mp4",
@@ -108,14 +95,6 @@ pub enum VideoCodec {
 }
 
 impl VideoCodec {
-    pub fn label(self) -> &'static str {
-        match self {
-            Self::H264 => tr("H.264, lu partout"),
-            Self::H265 => tr("H.265, plus léger"),
-            Self::Av1 => tr("AV1, le plus léger"),
-            Self::Vp9 => "VP9",
-        }
-    }
 
     pub fn short(self) -> &'static str {
         match self {
@@ -167,18 +146,6 @@ impl Resolution {
         }
     }
 
-    pub fn label(self) -> &'static str {
-        match self {
-            Self::Source => tr("Celle de l'original"),
-            Self::P2160 => "2160p (4K)",
-            Self::P1440 => "1440p",
-            Self::P1080 => "1080p (Full HD)",
-            Self::P720 => "720p (HD)",
-            Self::P480 => "480p",
-            Self::P360 => "360p",
-            Self::P240 => "240p",
-        }
-    }
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -212,12 +179,6 @@ impl Fps {
         }
     }
 
-    pub fn label(self) -> String {
-        match self.value() {
-            None => tr("Celles de l'original").to_owned(),
-            Some(n) => crate::i18n::tf("{n} images par seconde", &[("n", &n)]),
-        }
-    }
 }
 
 /// Comment on fixe le poids du fichier : par la qualité, ou par une taille à ne pas dépasser.
@@ -259,15 +220,6 @@ impl Audio {
         }
     }
 
-    pub fn label(self) -> &'static str {
-        match self {
-            Self::K192 => tr("Très bonne qualité (192 kb/s)"),
-            Self::K128 => tr("Bonne qualité (128 kb/s)"),
-            Self::K96 => tr("Légère (96 kb/s)"),
-            Self::K64 => tr("Très légère (64 kb/s)"),
-            Self::None => tr("Sans le son"),
-        }
-    }
 }
 
 /// Les réglages d'un encodage.
@@ -292,7 +244,8 @@ impl Default for Encode {
         Self {
             container: Container::Mp4,
             codec: VideoCodec::H264,
-            resolution: Resolution::Source,
+            // Le premier choix de l'écran, « Web 1080p ». Une vidéo plus petite n'est jamais agrandie.
+            resolution: Resolution::P1080,
             fps: Fps::Source,
             mode: Mode::Quality,
             compression: 40,
@@ -354,34 +307,36 @@ impl Encode {
 /// Un préréglage : un nom, une icône, des réglages complets.
 pub struct Preset {
     pub name: &'static str,
-    pub hint: &'static str,
-    pub icon: Icon,
+    /// Le nom en court, quand les choix tiennent sur une ligne.
+    pub short: &'static str,
+    /// Ce que le choix produit, en quelques mots.
+    pub spec: &'static str,
     pub encode: Encode,
 }
 
 pub fn presets() -> Vec<Preset> {
     let base = Encode::default();
     vec![
-        Preset { name: tr("Web 1080p"), hint: tr("MP4 H.264 en 1080p, lu partout"), icon: Icon::Globe, encode: Encode { resolution: Resolution::P1080, ..base } },
+        Preset { name: tr("Web 1080p"), short: tr("Web 1080p"), spec: tr("MP4 en H.264, lu partout"), encode: base },
         Preset {
             name: tr("Léger 720p"),
-            hint: tr("MP4 H.264 en 720p à 30 images par seconde"),
-            icon: Icon::Feather,
+            short: tr("Léger 720p"),
+            spec: tr("30 images par seconde"),
             encode: Encode { resolution: Resolution::P720, fps: Fps::F30, compression: 55, audio: Audio::K96, ..base },
         },
         Preset {
             name: tr("Sous 10 Mo"),
-            hint: tr("Pour les messageries qui limitent la taille des envois"),
-            icon: Icon::Send,
+            short: tr("Sous 10 Mo"),
+            spec: tr("Pour les messageries"),
             encode: Encode { resolution: Resolution::P720, fps: Fps::F30, mode: Mode::TargetSize, target_mb: 10.0, audio: Audio::K96, ..base },
         },
         Preset {
-            name: tr("GIF"),
-            hint: tr("GIF animé en 480p à 15 images par seconde"),
-            icon: Icon::Images,
+            name: tr("GIF animé"),
+            short: "GIF",
+            spec: tr("480p, 15 images par seconde"),
             encode: Encode { container: Container::Gif, resolution: Resolution::P480, fps: Fps::F15, audio: Audio::None, ..base },
         },
-        Preset { name: tr("Son MP3"), hint: tr("Garde uniquement la piste audio"), icon: Icon::Music, encode: Encode { container: Container::Mp3, audio: Audio::K192, ..base } },
+        Preset { name: tr("Garder seulement le son"), short: tr("Son seul"), spec: "MP3 · 192 kb/s", encode: Encode { container: Container::Mp3, audio: Audio::K192, ..base } },
     ]
 }
 

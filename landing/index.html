@@ -11,7 +11,7 @@
     <link rel="icon" href="./icon.svg" />
     <link rel="apple-touch-icon" href="./icon/128.png" />
     <link rel="canonical" href="https://djdevpro.github.io/video-compressor/" />
-    <meta name="theme-color" content="#111110" />
+    <meta name="theme-color" content="#0c0c0c" />
     <meta name="author" content="Youcef Djidjelli" />
 
     <meta property="og:type" content="website" />
@@ -45,14 +45,14 @@
     </script>
     <style>
       :root {
-        --bg: #111110;
-        --text: #efede8;
-        --muted: #a8a49b;
-        --faint: #78746b;
+        --bg: #0c0c0c;
+        --text: #ededed;
+        --muted: #a3a3a3;
+        --faint: #727272;
         --accent: #e89c39;
         --accent-2: #f4a945;
         --accent-3: #ffbb62;
-        --line: rgba(244, 169, 69, 0.14);
+        --line: rgba(255, 255, 255, 0.1);
       }
 
       * {
@@ -68,9 +68,9 @@
         font: 16px/1.6 system-ui, -apple-system, 'Segoe UI', sans-serif;
         color: var(--text);
         background:
-          radial-gradient(55% 42% at 50% -4%, rgba(244, 169, 69, 0.17), transparent 70%),
-          radial-gradient(40% 34% at 88% 28%, rgba(244, 169, 69, 0.06), transparent 70%),
-          radial-gradient(46% 36% at 8% 76%, rgba(244, 169, 69, 0.06), transparent 70%),
+          radial-gradient(55% 42% at 50% -4%, rgba(255, 255, 255, 0.045), transparent 70%),
+          radial-gradient(40% 34% at 88% 28%, rgba(255, 255, 255, 0.014), transparent 70%),
+          radial-gradient(46% 36% at 8% 76%, rgba(255, 255, 255, 0.014), transparent 70%),
           var(--bg);
         min-height: 100vh;
       }
@@ -103,7 +103,7 @@
         height: 84px;
         margin: 0 auto 26px;
         display: block;
-        filter: drop-shadow(0 0 28px rgba(244, 169, 69, 0.3)) drop-shadow(0 6px 18px rgba(0, 0, 0, 0.5));
+        filter: drop-shadow(0 6px 18px rgba(0, 0, 0, 0.6));
       }
 
       h1 {
@@ -157,7 +157,7 @@
         text-decoration: none;
         color: var(--text);
         background: linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.02));
-        border: 1px solid rgba(244, 169, 69, 0.22);
+        border: 1px solid rgba(255, 255, 255, 0.14);
         box-shadow:
           inset 0 1px 0 rgba(255, 255, 255, 0.07),
           0 1px 2px rgba(0, 0, 0, 0.3),
@@ -167,7 +167,7 @@
 
       .btn:hover {
         transform: translateY(-1px);
-        border-color: rgba(244, 169, 69, 0.4);
+        border-color: rgba(255, 255, 255, 0.28);
       }
 
       .btn.primary {
@@ -177,7 +177,7 @@
         box-shadow:
           inset 0 1px 0 rgba(255, 255, 255, 0.45),
           0 1px 2px rgba(0, 0, 0, 0.35),
-          0 10px 32px -8px rgba(244, 169, 69, 0.5);
+          0 10px 28px -12px rgba(244, 169, 69, 0.28);
       }
 
       .btn svg {
@@ -195,13 +195,12 @@
         /* gradient border: 1px padding + inner surface */
         padding: 1px;
         border-radius: 18px;
-        background: linear-gradient(180deg, rgba(244, 169, 69, 0.38), rgba(244, 169, 69, 0.05) 55%, rgba(244, 169, 69, 0.12));
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.04) 55%, rgba(255, 255, 255, 0.09));
         box-shadow:
           0 0 0 1px rgba(0, 0, 0, 0.4),
           0 2px 4px rgba(0, 0, 0, 0.3),
           0 12px 24px -8px rgba(0, 0, 0, 0.5),
-          0 32px 80px -16px rgba(0, 0, 0, 0.6),
-          0 0 120px -24px rgba(244, 169, 69, 0.32);
+          0 32px 80px -16px rgba(0, 0, 0, 0.7);
       }
 
       .frame-inner {
@@ -241,7 +240,7 @@
 
       .view:hover {
         color: var(--text);
-        border-color: rgba(244, 169, 69, 0.3);
+        border-color: rgba(255, 255, 255, 0.22);
       }
 
       .view[aria-pressed='true'] {
@@ -328,7 +327,7 @@
         flex: none;
         padding: 1px;
         border-radius: 14px;
-        background: rgba(244, 169, 69, 0.1);
+        background: rgba(255, 255, 255, 0.07);
         overflow: hidden;
         transition: transform 0.25s ease, box-shadow 0.25s ease;
       }
@@ -340,8 +339,8 @@
         background: conic-gradient(
           from var(--spin),
           transparent 0deg,
-          rgba(244, 169, 69, 0.5) 38deg,
-          rgba(244, 169, 69, 0.14) 80deg,
+          rgba(255, 255, 255, 0.3) 38deg,
+          rgba(255, 255, 255, 0.08) 80deg,
           transparent 130deg
         );
         opacity: 0.65;
@@ -365,7 +364,7 @@
         transform: translateY(-4px);
         box-shadow:
           0 6px 16px -8px rgba(0, 0, 0, 0.6),
-          0 22px 48px -16px rgba(244, 169, 69, 0.32);
+          0 22px 48px -16px rgba(0, 0, 0, 0.7);
       }
 
       .card:hover::before {
@@ -377,7 +376,7 @@
         height: 100%;
         border-radius: 13px;
         padding: 18px 18px 16px;
-        background: linear-gradient(180deg, #181715, #121110);
+        background: linear-gradient(180deg, #151515, #0f0f0f);
         box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
       }
 

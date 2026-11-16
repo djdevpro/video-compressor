@@ -73,7 +73,8 @@ fn fill(app: &mut App) {
     app.menu_on = true;
 }
 
-/// Une image de synthèse en 16/9, pour voir l'aperçu en grand dans les captures.
+/// Une image de synthèse en 16/9, en noir et blanc et sombre, pour voir l'aperçu en grand dans
+/// les captures sans qu'elle prenne le pas sur l'interface.
 fn picture(h: &Harness<'static, App>) -> egui::TextureHandle {
     let (w, hgt) = (640usize, 360usize);
     let mut rgba = Vec::with_capacity(w * hgt * 4);
@@ -90,7 +91,8 @@ fn picture(h: &Harness<'static, App>) -> egui::TextureHandle {
             } else {
                 [(70.0 + 150.0 * fy) as u8, (96.0 + 80.0 * fy) as u8, (150.0 - 40.0 * fy) as u8]
             };
-            rgba.extend_from_slice(&[color[0], color[1], color[2], 255]);
+            let gray = ((0.299 * f32::from(color[0]) + 0.587 * f32::from(color[1]) + 0.114 * f32::from(color[2])) * 0.5) as u8;
+            rgba.extend_from_slice(&[gray, gray, gray, 255]);
         }
     }
     h.ctx.load_texture("mire", egui::ColorImage::from_rgba_unmultiplied([w, hgt], &rgba), egui::TextureOptions::LINEAR)

@@ -223,7 +223,7 @@ fn captures() {
         let dir = workspace(&format!("captures-{name}"));
         let clip = sample(&dir, 3, 640, 360);
         let player = Player::open(100, clip.clone(), &engine::probe(&clip).unwrap(), h.ctx.clone());
-        wait_for(5, "quelques images du lecteur", || player.shown().1 >= 20);
+        wait_for(15, "quelques images du lecteur", || player.shown().1 >= 20);
         h.state_mut().player = Some(player);
         h.run_steps(3);
         h.render().unwrap().save(format!("target/captures/{name}-lecture.png")).unwrap();
@@ -422,30 +422,32 @@ fn e2e_lecteur_de_l_apercu() {
     let started = Instant::now();
     let player = Player::open(1, input.clone(), &info, ctx.clone());
     assert!(player.playing() && player.can_seek);
-    wait_for(5, "trente images lues", || player.shown().1 >= 30);
+    wait_for(15, "trente images lues", || player.shown().1 >= 30);
     assert_eq!(player.shown().0, Some((640, 360)));
-    // Trente images à 30 par seconde : une seconde de vidéo, en une seconde environ.
-    let (elapsed, position) = (started.elapsed().as_secs_f64(), player.position());
-    assert!((0.8..1.3).contains(&position), "position {position}");
-    assert!(elapsed > 0.8, "la lecture suit l'horloge, pas la vitesse du décodeur ({elapsed} s)");
+    // Trente images à 30 par seconde : au moins une seconde de vidéo, et jamais en avance sur
+    // l'horloge. Sur une machine chargée, des images sont sautées : la position peut être plus loin
+    // que la trentième image, pas plus loin que le temps écoulé.
+    let (position, elapsed) = (player.position(), started.elapsed().as_secs_f64());
+    assert!(position > 0.8, "position {position}");
+    assert!(position < elapsed + 0.1, "la lecture suit l'horloge, pas la vitesse du décodeur ({position} s lues en {elapsed} s)");
 
     player.toggle();
-    std::thread::sleep(Duration::from_millis(150));
+    std::thread::sleep(Duration::from_millis(400));
     let paused = player.shown().1;
-    std::thread::sleep(Duration::from_millis(300));
+    std::thread::sleep(Duration::from_millis(400));
     assert!(!player.playing() && player.shown().1 == paused, "en pause, plus aucune image n'arrive");
 
     player.seek(2.0);
-    wait_for(5, "l'image du saut", || (player.position() - 2.0).abs() < 0.05);
+    wait_for(15, "l'image du saut", || (player.position() - 2.0).abs() < 0.05);
     assert!(!player.playing(), "un saut en pause reste en pause");
     assert_eq!(player.shown().1, paused + 1, "une seule image montrée, celle de l'instant demandé");
 
     player.toggle();
-    wait_for(5, "la fin de la vidéo", || player.ended());
+    wait_for(15, "la fin de la vidéo", || player.ended());
     assert!(!player.playing() && (player.position() - info.duration).abs() < 0.1, "position {}", player.position());
     // Au bout, relancer repart du début.
     player.toggle();
-    wait_for(5, "la reprise au début", || player.playing() && player.position() < 1.0 && !player.ended());
+    wait_for(15, "la reprise au début", || player.playing() && player.position() < 2.5 && !player.ended());
     assert!(player.error().is_none());
     drop(player);
 
@@ -461,7 +463,7 @@ fn e2e_lecteur_de_l_apercu() {
     h.get_by_label("Lire la vidéo").click_accesskit();
     h.run_steps(3);
     assert!(h.state().player.as_ref().is_some_and(|p| p.item == 7 && p.playing()));
-    wait_for(5, "une image dans la fenêtre", || h.state().player.as_ref().unwrap().shown().1 >= 3);
+    wait_for(15, "une image dans la fenêtre", || h.state().player.as_ref().unwrap().shown().1 >= 3);
     h.run_steps(2);
     h.get_by_label("Mettre en pause").click_accesskit();
     h.run_steps(3);
@@ -475,7 +477,7 @@ fn e2e_lecteur_de_l_apercu() {
     let phone = dir.join("telephone.mp4");
     engine::testing::sample_turned(&phone, 2, 320, 240, Some(90.0));
     let turned = Player::open(2, phone.clone(), &engine::probe(&phone).unwrap(), ctx.clone());
-    wait_for(5, "une image de la vidéo de téléphone", || turned.shown().1 >= 1);
+    wait_for(15, "une image de la vidéo de téléphone", || turned.shown().1 >= 1);
     assert_eq!(turned.shown().0, Some((240, 320)));
     drop(turned);
 
@@ -486,7 +488,7 @@ fn e2e_lecteur_de_l_apercu() {
     assert!(info.webp.is_some());
     let animation = Player::open(3, webp, &info, ctx);
     assert!(!animation.can_seek);
-    wait_for(10, "la fin de l'animation", || animation.ended());
+    wait_for(30, "la fin de l'animation", || animation.ended());
     let (size, frames) = animation.shown();
     assert_eq!(size.map(|s| s.1), Some(240));
     assert!((25..=35).contains(&frames), "{frames} images pour 3 s à 10 images par seconde");

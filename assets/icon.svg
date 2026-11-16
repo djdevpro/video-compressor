@@ -10,9 +10,9 @@
       <stop offset="0.5" stop-color="#2f2f2f"/>
       <stop offset="1" stop-color="#4a4a4a"/>
     </linearGradient>
-    <linearGradient id="coral" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#ff9883"/>
-      <stop offset="1" stop-color="#f4694a"/>
+    <linearGradient id="accent" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#d4f76c"/>
+      <stop offset="1" stop-color="#a9d62e"/>
     </linearGradient>
   </defs>
   <rect x="16" y="16" width="480" height="480" rx="112" fill="url(#plate)" stroke="url(#edge)" stroke-width="8"/>
@@ -22,5 +22,5 @@
   <!-- L'image de film -->
   <rect x="96" y="176" width="320" height="160" rx="34" fill="#1b1b1b" stroke="#d8d8d8" stroke-width="14"/>
   <!-- Lecture -->
-  <path d="M228 214c0-9 10-14 17-9l66 43c7 4 7 14 0 18l-66 43c-7 5-17 0-17-9z" fill="url(#coral)"/>
+  <path d="M228 214c0-9 10-14 17-9l66 43c7 4 7 14 0 18l-66 43c-7 5-17 0-17-9z" fill="url(#accent)"/>
 </svg>

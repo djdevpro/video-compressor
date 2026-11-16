@@ -16,6 +16,7 @@ use egui_kittest::kittest::Queryable as _;
 
 use crate::app::{App, Batch, Dialog};
 use crate::engine::{self, EncodeError, MediaInfo};
+use crate::i18n::Lang;
 use crate::queue::{self, Item, Job, Msg, State};
 use crate::settings::{Audio, Container, Encode, Fps, Mode, Resolution, Settings, Speed, VideoCodec};
 
@@ -23,8 +24,13 @@ use crate::settings::{Audio, Container, Encode, Fps, Mode, Resolution, Settings,
 const NORMAL: (f32, f32) = (1080.0, 740.0);
 const MINI: (f32, f32) = (960.0, 680.0);
 
-fn harness_sized((w, h): (f32, f32)) -> Harness<'static, App> {
-    let mut harness = Harness::builder().with_size(egui::vec2(w, h)).with_max_steps(40).build_eframe(|cc| App::with_settings(cc, Settings::default(), true));
+fn harness_sized(size: (f32, f32)) -> Harness<'static, App> {
+    harness_scaled(size, 1.0)
+}
+
+/// La même fenêtre, rendue à `scale` pixels par point (2 pour les images du site).
+fn harness_scaled((w, h): (f32, f32), scale: f32) -> Harness<'static, App> {
+    let mut harness = Harness::builder().with_size(egui::vec2(w, h)).with_pixels_per_point(scale).with_max_steps(40).build_eframe(|cc| App::with_settings(cc, Settings::default(), true));
     harness.run();
     harness
 }
@@ -227,6 +233,42 @@ fn captures() {
         h.run_steps(3);
         h.render().unwrap().save(format!("target/captures/{name}-mise-a-jour.png")).unwrap();
     }
+}
+
+/// Les images du site (en anglais) et du README (en français), en double densité.
+/// `scripts/landing-shots.py` les met en place. À lancer seul, parce qu'il change la langue,
+/// qui est commune à tous les tests : `cargo test captures_du_site -- --ignored`.
+#[test]
+#[ignore = "change la langue de tout le processus"]
+fn captures_du_site() {
+    std::fs::create_dir_all("target/captures").unwrap();
+    for (lang, code) in [(Lang::En, "en"), (Lang::Fr, "fr")] {
+        crate::i18n::set(lang);
+        let mut h = harness_scaled(NORMAL, 2.0);
+        fill(h.state_mut());
+        if lang == Lang::En {
+            let names = ["Kickoff meeting.mov", "Product demo, take 3.mp4", "screen-capture-2026-11-16.mkv", "animated-sticker.webp", "old-camcorder.avi"];
+            for (item, name) in h.state_mut().items.iter_mut().zip(names) {
+                item.path = PathBuf::from(format!(r"C:\Videos\{name}"));
+                item.name = name.to_owned();
+            }
+            h.state_mut().settings.suffix = "-compressed".into();
+        }
+        let texture = picture(&h);
+        h.state_mut().items[0].thumb = Some(texture.clone());
+        h.state_mut().items[1].thumb = Some(texture);
+        h.run_steps(3);
+        h.render().unwrap().save(format!("target/captures/site-{code}-choix.png")).unwrap();
+        h.state_mut().fine_open = true;
+        h.run_steps(3);
+        h.render().unwrap().save(format!("target/captures/site-{code}-reglages-fins.png")).unwrap();
+        h.state_mut().fine_open = false;
+        h.state_mut().batch = Some(Batch { cancel: Arc::new(AtomicBool::new(false)), total: 4, finished: 1, ok: 1, failed: 0, saved: 0 });
+        h.state_mut().selected = Some(101);
+        h.run_steps(3);
+        h.render().unwrap().save(format!("target/captures/site-{code}-en-cours.png")).unwrap();
+    }
+    crate::i18n::set(Lang::Fr);
 }
 
 // ---- de bout en bout, avec le FFmpeg lié dans l'exécutable -------------------------------------

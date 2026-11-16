@@ -1,6 +1,12 @@
+<p align="center">
+  <img src=".github/assets/hero.jpg" alt="La fenêtre de Video Compressor, la vidéo à gauche et les choix à droite" width="100%" />
+</p>
+
 # Video Compressor
 
 Compresser ou convertir une vidéo d'un clic droit, sous Windows, Linux et macOS.
+
+Le site du projet est sur [djdevpro.github.io/video-compressor](https://djdevpro.github.io/video-compressor/).
 
 Un clic droit sur une vidéo ouvre une petite fenêtre avec le fichier déjà chargé. La vidéo est à gauche, ce qu'on veut en faire à droite. Un choix suffit la plupart du temps. Les réglages fins donnent la main sur le format, la résolution, le nombre d'images par seconde et le degré de compression. Le fichier produit arrive à côté de l'original, qui n'est jamais modifié.
 
@@ -89,6 +95,7 @@ Le workflow [Release](.github/workflows/release.yml) se lance à la main depuis 
 | `src/release.rs`, `src/net.rs` | La mise à jour de l'application |
 | `src/i18n.rs`, `locales/en.json` | Le français du code et sa traduction anglaise |
 | `build.rs`, `vcpkg.json`, `scripts/ffmpeg-libs.sh` | La compilation et l'édition de liens de FFmpeg |
+| `landing/`, `scripts/landing-shots.py` | Le site du projet et ses images, tirées des captures de l'application |
 
 ## Licence
 
